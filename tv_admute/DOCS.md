@@ -6,8 +6,8 @@
    one of `channels`.
 2. Arms after the badge was seen `arm_sightings` times on the current channel, so shows
    without a badge are never muted.
-3. Mutes when the badge has been missing for `miss_seconds` (and the TV is not already
-   muted).
+3. Mutes when the badge score was below `absent_below` in at least `absent_fraction` of the
+   last `miss_seconds` (clearly gone, not just faint), and the TV is not already muted.
 4. Unmutes when the badge is back in 2 frames in a row, after `max_mute_minutes`, or when
    the channel, source or power changes.
 5. If you unmute during an ad, it backs off until the badge has been seen again. If you
@@ -25,7 +25,8 @@
 | `dry_run` | `false` | Log decisions without muting |
 | `frame_interval_s` | `2` | Seconds between frames |
 | `state_poll_s` | `5` | Seconds between TV state checks |
-| `miss_seconds` | `60` | Badge missing this long → mute. Shorter mutes sooner but risks false mutes |
+| `miss_seconds` | `60` | Length of the window checked before muting. Shorter mutes sooner but risks false mutes |
+| `absent_below` / `absent_fraction` | `0.3` / `0.9` | Badge counts as gone below this score, in at least this share of the window |
 | `max_mute_minutes` | `12` | Safety limit |
 | `badge_on` / `badge_off` | `0.5` / `0.45` | Score above `badge_on` = badge present, below `badge_off` = absent |
 | `search_shift` | `2` | Pixels the badge may move around its calibrated spot |

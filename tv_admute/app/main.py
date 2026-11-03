@@ -99,7 +99,8 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     prune()
     d = Decider(miss_s=o["miss_seconds"], max_mute_s=o["max_mute_minutes"] * 60,
-                on=o["badge_on"], off=o["badge_off"], arm_sightings=o["arm_sightings"])
+                on=o["badge_on"], off=o["badge_off"], arm_sightings=o["arm_sightings"],
+                absent=o["absent_below"], absent_frac=o["absent_fraction"])
     hyp = Hyperion(o["hyperion_host"], o["hyperion_port"])
     log("start", dry_run=o["dry_run"], channels=[c for c, _ in CHANNELS])
     next_poll, tv_on, tv_muted, enabled, last_title = 0, False, False, True, object()

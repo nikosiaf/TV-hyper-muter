@@ -1,6 +1,6 @@
 name: TV Ad Mute
 slug: tv_admute
-version: "0.1.0"
+version: "0.2.0"
 description: >
   Mutes an LG webOS TV during ad breaks on Live TV. Reads the picture from Hyperion
   (PicCap on a rooted TV) and mutes through Home Assistant while the channel's
@@ -29,6 +29,8 @@ options:
   max_mute_minutes: 12
   badge_on: 0.5
   badge_off: 0.45
+  absent_below: 0.3
+  absent_fraction: 0.9
   search_shift: 2
   arm_sightings: 3
   save_frames: true
@@ -57,6 +59,8 @@ schema:
   max_mute_minutes: int(1,30)
   badge_on: float(0,1)
   badge_off: float(0,1)
+  absent_below: float(0,1)
+  absent_fraction: float(0.5,1)
   search_shift: int(0,4)
   arm_sightings: int(1,20)
   save_frames: bool

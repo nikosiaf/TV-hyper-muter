@@ -26,7 +26,7 @@ class DeciderTest(unittest.TestCase):
     def test_mutes_after_60s_and_unmutes_when_badge_returns(self):
         acts = run(self.d, [BADGE] * 5 + [NONE] * 40 + [BADGE] * 3)
         self.assertEqual([a for _, a, _ in acts], ["mute", "unmute"])
-        self.assertEqual(acts[0][0], 8 + 60)  # last badge at t=8
+        self.assertTrue(60 <= acts[0][0] <= 70)  # badge gone from t=10; 90 % of a 60 s window
         self.assertEqual(acts[1][2], "badge back")
 
     def test_single_badge_frame_does_not_unmute(self):
@@ -56,6 +56,19 @@ class DeciderTest(unittest.TestCase):
         self.assertEqual(self.d.state(muted_at + 5, "alpha", True, False), (None, None))  # HA lag
         self.assertEqual(self.d.state(muted_at + 20, "alpha", True, False), (None, "user unmuted"))
         self.assertEqual(run(self.d, [NONE] * 100, start=muted_at + 22), [])
+
+    def test_faint_badge_does_not_mute(self):
+        # semi-transparent badge: scores between absent_below and badge_on for minutes
+        self.assertEqual(run(self.d, [BADGE] * 5 + [0.42] * 200), [])
+
+    def test_mostly_gone_mutes(self):
+        # one stray mid score per 30 s does not stop a mute
+        scores = [BADGE] * 5 + ([NONE] * 14 + [0.4]) * 6
+        self.assertEqual([a for _, a, _ in run(self.d, scores)], ["mute"])
+
+    def test_no_immediate_remute_after_unmute(self):
+        acts = run(self.d, [BADGE] * 5 + [NONE] * 40 + [BADGE] * 2 + [NONE] * 10)
+        self.assertEqual([a for _, a, _ in acts], ["mute", "unmute"])
 
     def test_tv_off_while_muted_releases_without_unmute(self):
         run(self.d, [BADGE] * 5 + [NONE] * 40)

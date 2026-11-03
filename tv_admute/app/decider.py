@@ -6,9 +6,11 @@ take ("mute", "unmute" or None) plus a reason.
 
 
 class Decider:
-    def __init__(self, miss_s=60, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15):
+    def __init__(self, miss_s=60, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15,
+                 absent=0.30, absent_frac=0.9):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
+        self.absent, self.absent_frac = absent, absent_frac
         self.channel = None
         self.muted_at = None  # time we muted; None while we hold no mute
         self._reset()
@@ -17,6 +19,7 @@ class Decider:
         self.seen = 0
         self.last_seen = None
         self.back = 0
+        self.hist = []  # (t, score) over the last miss_s seconds
 
     @property
     def holding(self):
@@ -50,14 +53,20 @@ class Decider:
         if self.holding:
             if self.back >= 2:
                 self.muted_at = None
+                self.hist = []
                 return "unmute", "badge back"
             if t - self.muted_at >= self.max_mute_s:
                 self.muted_at = None
                 self._reset()
                 return "unmute", "max mute time"
             return None, None
+        # mute only when the badge is clearly gone (score below `absent` in most of the last
+        # miss_s seconds), not merely faint: Skai's semi-transparent badge sits at 0.3-0.49
+        self.hist = [(a, b) for a, b in self.hist + [(t, score)] if t - a <= self.miss_s]
         armed = self.seen >= self.arm_sightings and self.last_seen is not None
-        if armed and not tv_muted and t - self.last_seen >= self.miss_s:
+        full = self.hist[0][0] <= t - self.miss_s + 3
+        gone = sum(b < self.absent for _, b in self.hist) >= self.absent_frac * len(self.hist)
+        if armed and not tv_muted and full and gone:
             self.muted_at = t
             self.back = 0
             return "mute", f"badge missing {int(t - self.last_seen)} s"
