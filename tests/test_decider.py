@@ -38,6 +38,14 @@ class DeciderTest(unittest.TestCase):
         scores = ([NONE] * 100 + [BADGE]) * 3 + [NONE] * 60
         self.assertEqual(run(self.d, scores), [])
 
+    def test_per_channel_max_mute(self):
+        d = Decider(miss_s=60, max_mute_s=720, max_mute_by_channel={"skai": 540})
+        d.state(0, "skai", True, False)
+        acts = run(d, [BADGE] * 5 + [NONE] * 400)
+        self.assertEqual([a for _, a, _ in acts], ["mute", "unmute"])
+        self.assertEqual(acts[1][0] - acts[0][0], 540)
+        self.assertEqual(acts[1][2], "max mute time")
+
     def test_never_arms_without_badge(self):
         self.assertEqual(run(self.d, [NONE] * 200), [])
 

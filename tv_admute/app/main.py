@@ -100,7 +100,9 @@ def main():
     prune()
     d = Decider(miss_s=o["miss_seconds"], max_mute_s=o["max_mute_minutes"] * 60,
                 on=o["badge_on"], off=o["badge_off"], arm_sightings=o["arm_sightings"],
-                absent=o["absent_below"], absent_frac=o["absent_fraction"])
+                absent=o["absent_below"], absent_frac=o["absent_fraction"],
+                max_mute_by_channel={c["name"]: c["max_mute_minutes"] * 60
+                                     for c in o["channels"] if c.get("max_mute_minutes")})
     hyp = Hyperion(o["hyperion_host"], o["hyperion_port"])
     log("start", dry_run=o["dry_run"], channels=[c for c, _ in CHANNELS])
     next_poll, tv_on, tv_muted, enabled, last_title = 0, False, False, True, object()

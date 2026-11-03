@@ -7,11 +7,14 @@ take ("mute", "unmute" or None) plus a reason.
 
 class Decider:
     def __init__(self, miss_s=60, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15,
-                 absent=0.30, absent_frac=0.9, arm_gap_s=10):
+                 absent=0.30, absent_frac=0.9, arm_gap_s=10,
+                 max_mute_by_channel=None):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
         self.arm_gap_s = arm_gap_s
+        # per-channel cap: Skai news can follow an ad break with no badge (2026-11-03)
+        self.max_mute_by_channel = max_mute_by_channel or {}
         self.channel = None
         self.muted_at = None  # time we muted; None while we hold no mute
         self._reset()
@@ -61,7 +64,7 @@ class Decider:
                 self.muted_at = None
                 self.hist = []
                 return "unmute", "badge back"
-            if t - self.muted_at >= self.max_mute_s:
+            if t - self.muted_at >= self.max_mute_by_channel.get(self.channel, self.max_mute_s):
                 self.muted_at = None
                 self._reset()
                 return "unmute", "max mute time"

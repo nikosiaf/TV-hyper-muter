@@ -1,6 +1,6 @@
 name: TV Ad Mute
 slug: tv_admute
-version: "0.2.1"
+version: "0.2.2"
 description: >
   Mutes an LG webOS TV during ad breaks on Live TV. Reads the picture from Hyperion
   (PicCap on a rooted TV) and mutes through Home Assistant while the channel's
@@ -41,7 +41,7 @@ options:
     - {name: ant1, match: "\\bANT\\s*1\\b", y: 14, x: 306, r: 4}
     - {name: star, match: "\\bSTAR\\b", y: 12, x: 301, r: 4}
     - {name: alpha, match: "\\bALPHA\\b", y: 11, x: 302, r: 5}
-    - {name: skai, match: "\\bSKAI\\b|ΣΚΑΪ|ΣΚΑΙ", y: 10, x: 13, r: 4}
+    - {name: skai, match: "\\bSKAI\\b|ΣΚΑΪ|ΣΚΑΙ", y: 10, x: 13, r: 4, max_mute_minutes: 9}
     - {name: ert1, match: "\\b(ERT|ΕΡΤ)\\s*1\\b", y: 12, x: 301, r: 4}
     - {name: ert2, match: "\\b(ERT|ΕΡΤ)\\s*2\\b", y: 12, x: 301, r: 4}
     - {name: ert3, match: "\\b(ERT|ΕΡΤ)\\s*3\\b", y: 12, x: 301, r: 4}
@@ -71,3 +71,4 @@ schema:
       y: int(9,170)
       x: int(9,310)
       r: float(3,8)
+      max_mute_minutes: int(1,30)?
