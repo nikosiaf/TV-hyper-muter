@@ -102,10 +102,12 @@ def main():
                 on=o["badge_on"], off=o["badge_off"], arm_sightings=o["arm_sightings"],
                 absent=o["absent_below"], absent_frac=o["absent_fraction"],
                 max_mute_by_channel={c["name"]: c["max_mute_minutes"] * 60
-                                     for c in o["channels"] if c.get("max_mute_minutes")})
+                                     for c in o["channels"] if c.get("max_mute_minutes")},
+                static=o["static_motion"], static_frac=o["static_fraction"])
     hyp = Hyperion(o["hyperion_host"], o["hyperion_port"])
     log("start", dry_run=o["dry_run"], channels=[c for c, _ in CHANNELS])
     next_poll, tv_on, tv_muted, enabled, last_title = 0, False, False, True, object()
+    prev_small = (None, None)  # (channel, centre of last frame) for picture motion
     mutes, today, last_pub = 0, dt.date.today(), 0
     try:
         while True:
@@ -155,11 +157,16 @@ def main():
                 log("frame_error", channel=d.channel, error=repr(e))
                 time.sleep(5)
                 continue
-            sc = badge.score(np.asarray(Image.open(BytesIO(img)).convert("L"), float), d.channel)
+            gray = Image.open(BytesIO(img)).convert("L")
+            sc = badge.score(np.asarray(gray, float), d.channel)
+            # motion of the centre only: no badge/logo strip, no ticker band
+            small = np.asarray(gray.resize((80, 45)), float)[6:32, 4:76]
+            mo = float(np.abs(small - prev_small[1]).mean()) if prev_small[0] == d.channel else 99.0
+            prev_small = (d.channel, small)
             muted_before = d.muted_at
-            act, why = d.frame(t, sc, tv_muted)
+            act, why = d.frame(t, sc, tv_muted, mo)
             with open(f"{day_dir()}/scores.csv", "a") as f:
-                f.write(f"{int(t)},{d.channel},{sc:.3f},{int(d.holding)}\n")
+                f.write(f"{int(t)},{d.channel},{sc:.3f},{int(d.holding)},{mo:.1f}\n")
             if act:
                 set_mute(act == "mute")
                 frame = ""

@@ -53,6 +53,26 @@ class DeciderTest(unittest.TestCase):
         self.assertEqual([a for _, a, _ in acts], ["mute"])
         self.assertTrue(28 <= acts[0][0] - 8 <= 34)  # last badge frame at t=8
 
+    def test_still_picture_does_not_mute(self):
+        # Skai 13:04 2026-11-03: a still screen at the start of the news, no badge
+        acts = []
+        for i in range(60):
+            t = i * 2
+            a, _ = self.d.frame(t, BADGE if i < 5 else NONE, False, 50.0 if i < 5 else 0.3)
+            if a:
+                acts.append(a)
+        self.assertEqual(acts, [])
+
+    def test_short_still_packshot_still_mutes(self):
+        acts = []
+        for i in range(45):
+            t = i * 2
+            still = 25 <= i < 30  # 10 s still product shot inside the ad
+            a, _ = self.d.frame(t, BADGE if i < 5 else NONE, False, 0.5 if still else 50.0)
+            if a:
+                acts.append(a)
+        self.assertEqual(acts, ["mute"])
+
     def test_never_arms_without_badge(self):
         self.assertEqual(run(self.d, [NONE] * 200), [])
 
