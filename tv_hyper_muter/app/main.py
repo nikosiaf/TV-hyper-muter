@@ -7,6 +7,7 @@ import shutil
 import signal
 import sys
 import time
+import urllib.error
 import urllib.request
 from io import BytesIO
 
@@ -121,6 +122,7 @@ def main():
     hyp = Hyperion(o["hyperion_host"], o["hyperion_port"])
     log("start", dry_run=o["dry_run"], channels=[c for c, _ in CHANNELS])
     next_poll, tv_on, tv_muted, enabled, last_title = 0, False, False, True, object()
+    missing_logged = False
     prev_small = (None, None)  # (channel, centre of last frame) for picture motion
     bands = []  # (t, channel, edge map of rows 120-180) of the last ~12 s
     mutes, today, last_pub = 0, dt.date.today(), 0
@@ -140,7 +142,20 @@ def main():
                     title = at.get("media_title")
                     ch = channel_of(title) if tv_on and at.get("source") == o["live_source"] else None
                     if o["enable_entity"]:
-                        enabled = ha("GET", f"/states/{o['enable_entity']}").get("state") == "on"
+                        was = enabled
+                        try:
+                            enabled = ha("GET", f"/states/{o['enable_entity']}").get("state") == "on"
+                            missing_logged = False
+                        except urllib.error.HTTPError as e:
+                            if e.code != 404:
+                                raise
+                            enabled = True  # a missing switch must not stop the muter; say so once
+                            if not missing_logged:
+                                log("enable_entity_missing", entity=o["enable_entity"], acting_as="enabled")
+                                missing_logged = True
+                        if enabled != was:
+                            log("enabled" if enabled else "disabled", entity=o["enable_entity"])
+                            last_pub = 0  # show it on the status sensor right away
                     if not enabled:
                         ch = None
                 except Exception as e:

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.2
+
+- `enable_entity`: logs `enabled` / `disabled` when the switch changes, and the status sensor
+  shows `disabled` at once. A missing entity no longer stops the muter with a 404 every poll:
+  it logs `enable_entity_missing` once and keeps working as enabled.
+
 ## 0.8.1
 
 - Fix: every Home Assistant call failed with 401 Unauthorized. The base image's s6 init
