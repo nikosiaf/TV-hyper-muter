@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.0
+
+Reliability release, from an external code review.
+
+- Mute ownership is tracked apart from the decision: owned only after Home Assistant accepted
+  the mute, kept until an unmute is accepted. A failed unmute is retried with backoff (2 s up
+  to 60 s) instead of crashing the add-on and leaving the TV muted.
+- An owned mute is saved in `/data`; after a crash or a failed stop, the next start releases
+  it once the TV is seen on and muted.
+- `max_mute_minutes` is checked on every loop, frames or not. While muted, 60 s without a
+  picture unmutes ("no picture").
+- Mutes need fresh evidence: the window must be covered by frames with no gap over 8 s
+  (trial: 25k frames, max gap 6 s). The TV is checked again right before muting.
+- Frames of other 16:9 sizes are scaled to 320×180, other shapes refused; Hyperion messages
+  over 4 MB and over-long handshakes are refused; a bad frame no longer stops the loop.
+- Status sensor: new states `learning`, `armed`, `possible_ad`, `would_mute` (dry run),
+  `releasing`, `no_picture` (was `watching`); new attributes `reason`, `mute_left_s`,
+  `last_frame`, `problem`.
+- Dry run: a held "would mute" is no longer dropped after 15 s as a user unmute.
+- Monotonic clock for all durations; gradient computed once per frame, ring templates cached
+  (scores unchanged, ~20 % faster).
+- 16 new runner tests (fake HA, fake Hyperion, fake clock). Replay of 7,423 trial frames
+  gives the same 27 decisions as 0.9.1.
+
 ## 0.9.1
 
 - Logo twice the size (500×200) with the name in red.

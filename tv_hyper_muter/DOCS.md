@@ -19,9 +19,22 @@
 5. Unmutes when the badge is back in 2 frames in a row, when the news follows the break (band
    match at least `news_unmute` for `news_hold_s` while muted), after `max_mute_minutes`, or
    when the channel, source or power changes, or `enable_entity` is switched off.
+   While muted, if no picture arrives for 60 s it unmutes ("no picture") instead of waiting
+   for `max_mute_minutes`.
 6. If you unmute during an ad, it backs off until the badge has been seen again. If you
    muted the TV yourself, it never unmutes it.
-7. Stopping the add-on releases its mute.
+7. Missing pictures are not evidence: a mute needs the whole window covered by frames, with
+   no gap over 8 s. Right before muting it checks the TV again (same channel, not muted).
+
+## Reliability
+
+- The add-on owns a mute only after Home Assistant accepted the mute command, and keeps owning
+  it until an unmute is accepted. A failed unmute is retried (2 s, 4 s, 8 s ... up to 60 s)
+  until it works, the TV shows it is unmuted, or the TV is off.
+- An owned mute is saved in the add-on's `/data`. Stopping the add-on releases it; if that
+  fails (or the add-on crashed), the next start releases it once the TV is seen on and muted.
+- Frames of another 16:9 size are scaled to 320×180; other shapes are refused (status
+  `no_picture`). Hyperion messages over 4 MB are refused.
 
 ## Options
 
@@ -55,9 +68,25 @@ Optional per-channel fields: `max_mute_minutes` (own safety limit), `alt` (more 
 
 ## Status entity
 
-`sensor.tv_hyper_muter` shows `idle`, `watching`, `muted`, `disabled` or `stopped`, with
-attributes `channel`, `badge_score`, `mutes_today` and `dry_run`. It is recreated when the
-add-on starts (it is not stored by Home Assistant across restarts).
+`sensor.tv_hyper_muter` states:
+
+| State | Meaning |
+|---|---|
+| `idle` | TV off, not on Live TV, or on a channel that is not configured |
+| `learning` | On a configured channel, the badge has not been seen steadily yet: no mute except zap-in |
+| `armed` | Badge seen, watching for it to disappear |
+| `possible_ad` | Badge gone for a few seconds, building evidence |
+| `muted` | Muting an ad break |
+| `would_mute` | Same as `muted` in `dry_run` (the TV is not muted) |
+| `releasing` | An unmute failed and is being retried |
+| `no_picture` | No usable frames from Hyperion |
+| `disabled` | `enable_entity` is off |
+| `stopped` | Add-on stopped |
+
+Attributes: `channel`, `badge_score`, `mutes_today`, `dry_run`, `reason` (last decision),
+`mute_left_s` (time left to `max_mute_minutes`), `last_frame` (time of the last good frame)
+and `problem` (for example a missing `enable_entity`). The sensor is recreated when the add-on
+starts (Home Assistant does not keep it across restarts).
 
 ## Dashboard card
 

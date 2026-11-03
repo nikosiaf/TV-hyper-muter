@@ -10,6 +10,9 @@ import socket
 import struct
 import time
 
+MAX_MSG = 4 * 1024 * 1024  # a 320x180 frame is ~20 kB; refuse anything absurd
+MAX_HANDSHAKE = 8192
+
 
 class Hyperion:
     def __init__(self, host, port):
@@ -46,6 +49,8 @@ class Hyperion:
             if not c:
                 raise EOFError("closed during handshake")
             h += c
+            if len(h) > MAX_HANDSHAKE:
+                raise RuntimeError("websocket handshake too long")
         if b" 101 " not in h.split(b"\r\n")[0]:
             raise RuntimeError(f"websocket upgrade refused: {h[:80]!r}")
         self.s = s
@@ -68,6 +73,8 @@ class Hyperion:
                 n = struct.unpack(">H", self._recvn(2))[0]
             elif n == 127:
                 n = struct.unpack(">Q", self._recvn(8))[0]
+            if n > MAX_MSG or len(data) + n > MAX_MSG:
+                raise ValueError(f"websocket message too large ({len(data) + n} bytes)")
             pl = self._recvn(n)
             if op == 9:
                 self._send(pl, 10)

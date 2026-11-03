@@ -4,6 +4,8 @@ The badge is a small circle (about 10 px across at 320x180) in a fixed corner pe
 The score is the correlation between the image gradient and a synthetic ring, so the digit
 inside (K, 8, 12, 16, 18) does not matter. Searching +-SHIFT px allows for small encoder shifts.
 """
+from functools import lru_cache
+
 import numpy as np
 
 # channel -> (centre_y, centre_x, radius) at 320x180; filled in by calibrate.py
@@ -20,7 +22,18 @@ def grad(a):
     return np.hypot(gx, gy)
 
 
+@lru_cache(maxsize=64)
+def _ring(r, half):
+    t = _ring_raw(r, half)
+    t.setflags(write=False)
+    return t, float(np.linalg.norm(t))
+
+
 def ring(r, half=9):
+    return _ring(float(r), half)[0]
+
+
+def _ring_raw(r, half=9):
     yy, xx = np.mgrid[-half:half + 1, -half:half + 1]
     d = np.hypot(yy, xx)
     t = np.exp(-((d - r) ** 2) / (2 * 0.8 ** 2))
@@ -29,7 +42,7 @@ def ring(r, half=9):
 
 def score_at(g, cy, cx, r, half=9, shift=None):
     shift = SHIFT if shift is None else shift
-    t = ring(r, half)
+    t, tn = _ring(float(r), half)
     best = -1.0
     for dy in range(-shift, shift + 1):
         for dx in range(-shift, shift + 1):
@@ -38,7 +51,7 @@ def score_at(g, cy, cx, r, half=9, shift=None):
                 continue
             p = g[y - half:y + half + 1, x - half:x + half + 1]
             p = p - p.mean()
-            s = float((p * t).sum() / (np.linalg.norm(p) * np.linalg.norm(t) + 1e-6))
+            s = float((p * t).sum() / (np.linalg.norm(p) * tn + 1e-6))
             best = max(best, s)
     return best
 
@@ -48,5 +61,11 @@ def score(gray, channel):
     # start, smaller one (9,308,3) during talk shows (2026-11-03); best match wins
     c = CENTRES[channel]
     shapes = c if isinstance(c[0], (list, tuple)) else [c]
-    g = grad(gray)
+    return score_grad(grad(gray), channel)
+
+
+def score_grad(g, channel):
+    """score() on an already computed gradient image."""
+    c = CENTRES[channel]
+    shapes = c if isinstance(c[0], (list, tuple)) else [c]
     return max(score_at(g, cy, cx, r) for cy, cx, r in shapes)

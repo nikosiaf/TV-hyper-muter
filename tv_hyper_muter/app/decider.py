@@ -10,7 +10,7 @@ class Decider:
                  absent=0.30, absent_frac=0.9, arm_gap_s=10,
                  max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3, news_unmute=0.4, news_hold_s=30,
                  arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15,
-                 band_now=0.5, band_now_n=5, absent_by_channel=None):
+                 band_now=0.5, band_now_n=5, absent_by_channel=None, max_gap_s=8, no_picture_s=60):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
@@ -31,6 +31,12 @@ class Decider:
         self.arm_on_by_channel = arm_on_by_channel or {}
         # zapped into a break: unarmed since a channel change -> stricter mute rule (Skai 2026-11-03)
         self.zap_in, self.zap_s, self.zap_absent, self.zap_band = zap_in, zap_s, zap_absent, zap_band
+        # evidence must be fresh: no gap over max_gap_s inside a mute window (frames normally
+        # come every 2-3 s, max 6 s in 25k trial frames); while muted, no frame for no_picture_s
+        # releases the mute instead of waiting for the max mute time
+        self.max_gap_s, self.no_picture_s = max_gap_s, no_picture_s
+        self.last_frame_t = None
+        self.last_score = None
         self.fresh = False  # True from a channel change until the badge arms or any unmute
         self.channel = None
         self.muted_at = None  # time we muted; None while we hold no mute
@@ -45,6 +51,42 @@ class Decider:
     @property
     def holding(self):
         return self.muted_at is not None
+
+    def mute_cap(self):
+        return self.max_mute_by_channel.get(self.channel, self.max_mute_s)
+
+    def tick(self, t):
+        """Time-only checks while we hold a mute; call often, frames or not."""
+        if not self.holding:
+            return None, None
+        why = None
+        if t - self.muted_at >= self.mute_cap():
+            why = "max mute time"
+        elif t - max(self.muted_at, self.last_frame_t or self.muted_at) >= self.no_picture_s:
+            why = "no picture"
+        if why is None:
+            return None, None
+        self.muted_at = None
+        self._reset()
+        self.fresh = False
+        return "unmute", why
+
+    def cancel_mute(self):
+        """The mute command failed or the context changed: forget the mute, rebuild evidence."""
+        self.muted_at = None
+        self.hist = []
+
+    @property
+    def phase(self):
+        if self.channel is None:
+            return "idle"
+        if self.holding:
+            return "muted"
+        if self.seen >= self.arm_sightings and self.last_seen is not None:
+            gone = (self.last_score is not None and self.last_score < self.off
+                    and self.last_frame_t - self.last_seen >= 6)
+            return "possible_ad" if gone else "armed"
+        return "learning"
 
     def state(self, t, channel, tv_on, tv_muted):
         """channel = calibrated channel name on Live TV, else None."""
@@ -67,6 +109,7 @@ class Decider:
     def frame(self, t, score, tv_muted, motion=99.0, band=0.0):
         if self.channel is None:
             return None, None
+        self.last_frame_t, self.last_score = t, score
         if score >= self.arm_on_by_channel.get(self.channel, self.on):
             # arm only on a steady badge: sightings spread out over minutes (news graphics in
             # the badge corner) must not add up to an arm
@@ -98,12 +141,7 @@ class Decider:
                 self._reset()  # back off until the badge returns
                 self.fresh = False
                 return "unmute", "news band"
-            if t - self.muted_at >= self.max_mute_by_channel.get(self.channel, self.max_mute_s):
-                self.muted_at = None
-                self._reset()
-                self.fresh = False
-                return "unmute", "max mute time"
-            return None, None
+            return self.tick(t)
         # mute only when the badge is clearly gone (score below `absent` in most of the last
         # miss_s seconds), not merely faint: Skai's semi-transparent badge sits at 0.3-0.49
         self.hist = [h for h in self.hist + [(t, score, motion, band)]
@@ -114,7 +152,10 @@ class Decider:
         win, absent, nb = ((self.miss_s, self.absent_by_channel.get(self.channel, self.absent), self.news_band) if armed
                            else (self.zap_s, self.zap_absent, self.zap_band))
         hw = [h for h in self.hist if t - h[0] <= win]
-        full = self.hist[0][0] <= t - win + 3
+        # the window must be covered by observations: starts near its beginning, no big gaps
+        ts = [h[0] for h in hw]
+        full = (ts[0] <= t - win + 3
+                and all(b - a <= self.max_gap_s for a, b in zip(ts, ts[1:])))
         gone = sum(h[1] < absent for h in hw) >= self.absent_frac * len(hw)
         still = sum(h[2] < self.static for h in hw) >= self.static_frac * len(hw)
         bands = sorted(h[3] for h in hw)
