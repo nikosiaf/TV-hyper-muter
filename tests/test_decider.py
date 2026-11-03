@@ -36,7 +36,9 @@ class DeciderTest(unittest.TestCase):
     def test_scattered_badge_hits_do_not_arm(self):
         # news on Skai 2026-11-03: single >=0.5 frames minutes apart re-armed and muted the news
         scores = ([NONE] * 100 + [BADGE]) * 3 + [NONE] * 60
-        self.assertEqual(run(self.d, scores), [])
+        d = Decider(miss_s=60, max_mute_s=720, zap_in=False)  # arming logic only
+        d.state(0, "alpha", True, False)
+        self.assertEqual(run(d, scores), [])
 
     def test_per_channel_max_mute(self):
         d = Decider(miss_s=60, max_mute_s=720, max_mute_by_channel={"skai": 540})
@@ -110,7 +112,31 @@ class DeciderTest(unittest.TestCase):
         self.assertEqual(acts, ["mute"])
 
     def test_never_arms_without_badge(self):
-        self.assertEqual(run(self.d, [NONE] * 200), [])
+        d = Decider(miss_s=60, max_mute_s=720, zap_in=False)
+        d.state(0, "alpha", True, False)
+        self.assertEqual(run(d, [NONE] * 200), [])
+
+    def test_zap_in_mutes_after_60s_without_badge(self):
+        acts = run(self.d, [NONE] * 60)
+        self.assertEqual([a for _, a, _ in acts], ["mute"])
+        self.assertTrue(56 <= acts[0][0] <= 64)  # window counts as full 3 s early
+        self.assertTrue(acts[0][2].startswith("zap-in"))
+
+    def test_zap_in_blocked_by_fixed_band(self):
+        acts = [a for i in range(60) for a in [self.d.frame(i * 2, NONE, False, 50.0, 0.3)[0]] if a]
+        self.assertEqual(acts, [])
+
+    def test_no_zap_in_after_user_unmute(self):
+        run(self.d, [NONE] * 40)  # zap-in mute at ~60 s
+        self.assertTrue(self.d.holding)
+        self.d.state(100, "alpha", True, False)  # user unmuted
+        self.assertEqual(run(self.d, [NONE] * 100, start=102), [])
+
+    def test_arm_on_per_channel(self):
+        d = Decider(miss_s=25, max_mute_s=720, arm_on_by_channel={"mega": 0.45}, zap_in=False)
+        d.state(0, "mega", True, False)
+        acts = run(d, [0.47] * 5 + [NONE] * 20)
+        self.assertEqual([a for _, a, _ in acts], ["mute"])
 
     def test_does_not_mute_when_tv_already_muted(self):
         self.assertEqual(run(self.d, [BADGE] * 5 + [NONE] * 40, tv_muted=True), [])

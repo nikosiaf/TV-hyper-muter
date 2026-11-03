@@ -1,6 +1,6 @@
 name: TV hyper muter
 slug: tv_hyper_muter
-version: "0.5.1"
+version: "0.6.0"
 description: >
   Mutes an LG webOS TV during ad breaks on Live TV. Reads the picture from Hyperion
   (PicCap on a rooted TV) and mutes through Home Assistant while the channel's
@@ -38,11 +38,12 @@ options:
   news_band: 0.3
   news_unmute: 0.4
   news_hold_s: 30
+  zap_in: true
   save_frames: true
   keep_days: 14
   channels:
     - {name: open, match: "\\bOPEN\\b", y: 9, x: 307, r: 4, alt: "9,308,3"}
-    - {name: mega, match: "\\bMEGA\\b", y: 10, x: 298, r: 4}
+    - {name: mega, match: "\\bMEGA\\b", y: 10, x: 298, r: 4, arm_on: 0.45}
     - {name: ant1, match: "\\bANT\\s*1\\b", y: 14, x: 306, r: 4}
     - {name: star, match: "\\bSTAR\\b", y: 12, x: 301, r: 4}
     - {name: alpha, match: "\\bALPHA\\b", y: 11, x: 302, r: 5}
@@ -73,6 +74,7 @@ schema:
   news_band: float(0,1)
   news_unmute: float(0,1)
   news_hold_s: int(5,300)
+  zap_in: bool
   save_frames: bool
   keep_days: int(1,90)
   channels:
@@ -83,3 +85,4 @@ schema:
       r: float(3,8)
       max_mute_minutes: int(1,30)?
       alt: str?
+      arm_on: float(0,1)?

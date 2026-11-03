@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+- Per-channel `arm_on` (badge level that counts for arming only); Mega 0.45: its badge scores
+  0.45-0.50 in programme (0 % above 0.5 before). Unmute still needs 0.5 (a Mitsubishi ad hit
+  0.45-0.47 twice in a row).
+- Zap-in (`zap_in`): after a channel change with no badge seen yet, mute when the badge score
+  is below 0.25 in 90 % of 60 s and the bottom band is changing (median < 0.15). Off again after
+  arming or any unmute. Replay 2026-11-03 19:03-21:20: catches the Skai break zapped into, no
+  false mutes.
+
 ## 0.5.1
 
 - Unmute when the news follows an ad break: while muted, band median >= `news_unmute` 0.4 for
