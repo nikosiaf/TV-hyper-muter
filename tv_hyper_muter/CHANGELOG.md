@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Status `possible_ad` uses the same "clearly gone" level as the mute rule (`absent_below`,
+  or the channel's own), so a faint badge (Mega 0.40-0.50) no longer flickers the status
+  between `armed` and `possible_ad`.
+
 ## 0.10.0
 
 Reliability release, from an external code review.

@@ -83,7 +83,10 @@ class Decider:
         if self.holding:
             return "muted"
         if self.seen >= self.arm_sightings and self.last_seen is not None:
-            gone = (self.last_score is not None and self.last_score < self.off
+            # same 'clearly gone' level the mute rule uses, so a faint badge (Mega 0.40-0.50)
+            # does not flicker the status between armed and possible_ad
+            gone = (self.last_score is not None
+                    and self.last_score < self.absent_by_channel.get(self.channel, self.absent)
                     and self.last_frame_t - self.last_seen >= 6)
             return "possible_ad" if gone else "armed"
         return "learning"

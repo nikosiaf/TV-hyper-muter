@@ -117,6 +117,17 @@ class DeciderTest(unittest.TestCase):
                     acts.append(a)
             self.assertEqual(acts, want)
 
+    def test_faint_badge_is_not_possible_ad(self):
+        # Mega's badge scores 0.40-0.50 in programmes: armed, not possible_ad
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(0, "mega", True, False)
+        for i in range(10):
+            d.frame(i * 2, BADGE if i < 4 else 0.40, False, 50.0, 0.05)
+        self.assertEqual(d.phase, "armed")
+        for i in range(10, 16):
+            d.frame(i * 2, 0.1, False, 50.0, 0.05)
+        self.assertEqual(d.phase, "possible_ad")
+
     def test_news_after_break_unmutes(self):
         acts = []
         for i in range(120):
