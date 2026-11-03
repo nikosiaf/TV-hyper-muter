@@ -18,9 +18,15 @@ Nothing is installed or changed on the TV.
 
 ## Install
 
-Home Assistant → Settings → Add-ons → Add-on store → ⋮ → Repositories → add this
-repository's URL, then install **TV hyper muter**. For a private repository, use
-`https://<user>:<token>@github.com/<user>/TV-hyper-muter` with a read-only token.
+[![Add repository to Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fnikosiaf%2FTV-hyper-muter)
+
+Or: Home Assistant → Settings → Add-ons → Add-on store → ⋮ → Repositories → add
+`https://github.com/nikosiaf/TV-hyper-muter`, then install **TV hyper muter**.
+
+Before starting it, set `hyperion_host` to your TV's address and `tv_entity` to your TV's
+media player. The channel list is calibrated for Greek free-to-air channels; see
+[DOCS](tv_hyper_muter/DOCS.md#adding-a-channel) to add others. Try new channels with
+`dry_run` on first.
 
 ## Dashboard card
 
@@ -68,3 +74,7 @@ card:
 ```
 
 See [DOCS](tv_hyper_muter/DOCS.md) for options, logs and tuning.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
