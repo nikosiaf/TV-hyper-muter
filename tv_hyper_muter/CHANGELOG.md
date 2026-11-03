@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+- Unmute when the news follows an ad break: while muted, band median >= `news_unmute` 0.4 for
+  `news_hold_s` 30 s. Open 2026-11-03 19:39: would unmute 35 s into the news instead of the
+  12 min cap; no unmute in 16 min of labelled ads.
+
 ## 0.5.0
 
 - No mute while the bottom band (rows 120-180) stays the same as 10 s earlier (median match

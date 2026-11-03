@@ -113,7 +113,7 @@ def main():
                 max_mute_by_channel={c["name"]: c["max_mute_minutes"] * 60
                                      for c in o["channels"] if c.get("max_mute_minutes")},
                 static=o["static_motion"], static_frac=o["static_fraction"],
-                news_band=o["news_band"])
+                news_band=o["news_band"], news_unmute=o["news_unmute"], news_hold_s=o["news_hold_s"])
     hyp = Hyperion(o["hyperion_host"], o["hyperion_port"])
     log("start", dry_run=o["dry_run"], channels=[c for c, _ in CHANNELS])
     next_poll, tv_on, tv_muted, enabled, last_title = 0, False, False, True, object()

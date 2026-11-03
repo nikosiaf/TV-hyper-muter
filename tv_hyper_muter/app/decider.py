@@ -8,7 +8,7 @@ take ("mute", "unmute" or None) plus a reason.
 class Decider:
     def __init__(self, miss_s=25, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15,
                  absent=0.30, absent_frac=0.9, arm_gap_s=10,
-                 max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3):
+                 max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3, news_unmute=0.4, news_hold_s=30):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
@@ -17,6 +17,8 @@ class Decider:
         self.static, self.static_frac = static, static_frac
         # fixed bottom band (news ticker, talk-show captions) = not an ad (Alpha news 2026-11-03)
         self.news_band = news_band
+        # while muted: fixed band for news_hold_s = news right after the break (Open 2026-11-03)
+        self.news_unmute, self.news_hold_s = news_unmute, news_hold_s
         # per-channel cap: Skai news can follow an ad break with no badge (2026-11-03)
         self.max_mute_by_channel = max_mute_by_channel or {}
         self.channel = None
@@ -64,10 +66,20 @@ class Decider:
         elif score < self.off:
             self.back = 0
         if self.holding:
+            self.mhist = [h for h in self.mhist + [(t, band)] if t - h[0] <= self.miss_s]
+            mb = sorted(h[1] for h in self.mhist)
+            if mb[len(mb) // 2] >= self.news_unmute and t - self.muted_at >= self.miss_s:
+                self.news_since = self.news_since if self.news_since is not None else t
+            else:
+                self.news_since = None
             if self.back >= 2:
                 self.muted_at = None
                 self.hist = []
                 return "unmute", "badge back"
+            if self.news_since is not None and t - self.news_since >= self.news_hold_s:
+                self.muted_at = None
+                self._reset()  # back off until the badge returns
+                return "unmute", "news band"
             if t - self.muted_at >= self.max_mute_by_channel.get(self.channel, self.max_mute_s):
                 self.muted_at = None
                 self._reset()
@@ -85,5 +97,6 @@ class Decider:
         if armed and not tv_muted and full and gone and not still and not news:
             self.muted_at = t
             self.back = 0
+            self.mhist, self.news_since = [], None
             return "mute", f"badge missing {int(t - self.last_seen)} s"
         return None, None
