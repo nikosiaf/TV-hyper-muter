@@ -113,6 +113,7 @@ def main():
                 max_mute_by_channel={c["name"]: c["max_mute_minutes"] * 60
                                      for c in o["channels"] if c.get("max_mute_minutes")},
                 arm_on_by_channel={c["name"]: c["arm_on"] for c in o["channels"] if c.get("arm_on")},
+                absent_by_channel={c["name"]: c["absent_below"] for c in o["channels"] if c.get("absent_below")},
                 zap_in=o["zap_in"],
                 static=o["static_motion"], static_frac=o["static_fraction"],
                 news_band=o["news_band"], news_unmute=o["news_unmute"], news_hold_s=o["news_hold_s"],

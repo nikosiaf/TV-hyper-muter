@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+- New channel Kontra (badge y 12, x 300, r 4.5; programme 0.70-0.75). Its ads score up to
+  0.38, so it gets a per-channel `absent_below` 0.4 (new optional channel field).
+
 ## 0.7.0
 
 - No mute while fixed graphics have just appeared: band median of the last 5 frames (10 s)

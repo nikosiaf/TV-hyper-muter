@@ -10,10 +10,12 @@ class Decider:
                  absent=0.30, absent_frac=0.9, arm_gap_s=10,
                  max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3, news_unmute=0.4, news_hold_s=30,
                  arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15,
-                 band_now=0.5, band_now_n=5):
+                 band_now=0.5, band_now_n=5, absent_by_channel=None):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
+        # per-channel 'clearly gone' level (Kontra ads score up to 0.38, programme 0.70-0.75)
+        self.absent_by_channel = absent_by_channel or {}
         self.arm_gap_s = arm_gap_s
         # still picture = not an ad (ads were still at most ~10 s in labelled recordings)
         self.static, self.static_frac = static, static_frac
@@ -109,7 +111,7 @@ class Decider:
         armed = self.seen >= self.arm_sightings and self.last_seen is not None
         if not armed and not (self.zap_in and self.fresh):
             return None, None
-        win, absent, nb = ((self.miss_s, self.absent, self.news_band) if armed
+        win, absent, nb = ((self.miss_s, self.absent_by_channel.get(self.channel, self.absent), self.news_band) if armed
                            else (self.zap_s, self.zap_absent, self.zap_band))
         hw = [h for h in self.hist if t - h[0] <= win]
         full = self.hist[0][0] <= t - win + 3

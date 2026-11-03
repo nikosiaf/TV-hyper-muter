@@ -104,6 +104,19 @@ class DeciderTest(unittest.TestCase):
                 acts.append(a)
         self.assertEqual(acts, [])
 
+    def test_absent_per_channel(self):
+        # Kontra ads score 0.30-0.38 in a quarter of the frames: mutes only with its own 0.40 level
+        for per, want in (({}, []), ({"kontra": 0.4}, ["mute"])):
+            d = Decider(miss_s=25, max_mute_s=720, absent_by_channel=per)
+            d.state(0, "kontra", True, False)
+            acts = []
+            for i in range(40):
+                sc = 0.72 if i < 5 else (0.35 if i % 3 == 0 else 0.1)
+                a, _ = d.frame(i * 2, sc, False, 50.0, 0.05)
+                if a:
+                    acts.append(a)
+            self.assertEqual(acts, want)
+
     def test_news_after_break_unmutes(self):
         acts = []
         for i in range(120):
