@@ -1,4 +1,4 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=alpine:3.22
 FROM ${BUILD_FROM}
 
 RUN apk add --no-cache python3 py3-numpy py3-pillow

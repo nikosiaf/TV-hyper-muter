@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- Fix install: add build.yaml (HA base image per arch) and an Alpine default for
+  BUILD_FROM. The Supervisor no longer supplies a base image when none is given.
+
 ## 0.3.0
 
 - No mute while the picture is still (centre of the screen barely changes in half of the
