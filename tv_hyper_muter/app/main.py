@@ -167,6 +167,8 @@ def main():
                     log("channel", channel=ch, title=title, source=at.get("source"), tv_on=tv_on)
                 held_since = d.muted_at
                 act, why = d.state(t, ch, tv_on, tv_muted)
+                if why and not enabled:
+                    why = "disabled"  # released because enable_entity was switched off
                 if act == "unmute":
                     set_mute(False)
                 if why:

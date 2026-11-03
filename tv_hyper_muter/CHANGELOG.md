@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0
+
+- New cartoon icon and logo.
+- Switching `enable_entity` off now logs the released mute with reason `disabled` (was
+  `channel/source change`).
+- DOCS: all current options and rules (still picture, bottom band, zap-in, news unmute,
+  per-channel fields), and a dashboard card: the TV tile with an on/off button on the same row.
+
 ## 0.8.2
 
 - `enable_entity`: logs `enabled` / `disabled` when the switch changes, and the status sensor
