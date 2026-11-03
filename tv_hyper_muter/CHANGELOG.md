@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- No mute while the bottom band (rows 120-180) stays the same as 10 s earlier (median match
+  >= `news_band` 0.3 over the window): news tickers and talk-show caption bands. Alpha news
+  2026-11-03 had badge-less segments and was muted 3 times; its band scores 0.32-0.52,
+  ads median 0.04. scores.csv gets a 6th column (band).
+
 ## 0.4.2
 
 - Mute after 25 s without the badge (was 30 s). Replay of 2026-11-03: no new false mutes,

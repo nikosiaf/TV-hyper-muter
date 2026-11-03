@@ -73,6 +73,22 @@ class DeciderTest(unittest.TestCase):
                 acts.append(a)
         self.assertEqual(acts, ["mute"])
 
+    def test_news_band_blocks_mute(self):
+        acts = []
+        for i in range(60):
+            a, _ = self.d.frame(i * 2, BADGE if i < 5 else NONE, False, 50.0, 0.45)
+            if a:
+                acts.append(a)
+        self.assertEqual(acts, [])
+
+    def test_changing_band_still_mutes(self):
+        acts = []
+        for i in range(45):
+            a, _ = self.d.frame(i * 2, BADGE if i < 5 else NONE, False, 50.0, 0.05)
+            if a:
+                acts.append(a)
+        self.assertEqual(acts, ["mute"])
+
     def test_never_arms_without_badge(self):
         self.assertEqual(run(self.d, [NONE] * 200), [])
 

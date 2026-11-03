@@ -112,11 +112,13 @@ def main():
                 absent=o["absent_below"], absent_frac=o["absent_fraction"],
                 max_mute_by_channel={c["name"]: c["max_mute_minutes"] * 60
                                      for c in o["channels"] if c.get("max_mute_minutes")},
-                static=o["static_motion"], static_frac=o["static_fraction"])
+                static=o["static_motion"], static_frac=o["static_fraction"],
+                news_band=o["news_band"])
     hyp = Hyperion(o["hyperion_host"], o["hyperion_port"])
     log("start", dry_run=o["dry_run"], channels=[c for c, _ in CHANNELS])
     next_poll, tv_on, tv_muted, enabled, last_title = 0, False, False, True, object()
     prev_small = (None, None)  # (channel, centre of last frame) for picture motion
+    bands = []  # (t, channel, edge map of rows 120-180) of the last ~12 s
     mutes, today, last_pub = 0, dt.date.today(), 0
     try:
         while True:
@@ -172,10 +174,19 @@ def main():
             small = np.asarray(gray.resize((80, 45)), float)[6:32, 4:76]
             mo = float(np.abs(small - prev_small[1]).mean()) if prev_small[0] == d.channel else 99.0
             prev_small = (d.channel, small)
+            # bottom band stability vs 8-12 s ago: fixed news/talk-show graphics, not an ad
+            bnd = badge.grad(np.asarray(gray, float))[120:180]
+            old = [b for a, c, b in bands if c == d.channel and 8 <= t - a <= 12]
+            if old:
+                x, y = bnd - bnd.mean(), old[0] - old[0].mean()
+                bc = float((x * y).sum() / (np.linalg.norm(x) * np.linalg.norm(y) + 1e-6))
+            else:
+                bc = 0.0
+            bands = [(a, c, b) for a, c, b in bands + [(t, d.channel, bnd)] if t - a <= 12]
             muted_before = d.muted_at
-            act, why = d.frame(t, sc, tv_muted, mo)
+            act, why = d.frame(t, sc, tv_muted, mo, bc)
             with open(f"{day_dir()}/scores.csv", "a") as f:
-                f.write(f"{int(t)},{d.channel},{sc:.3f},{int(d.holding)},{mo:.1f}\n")
+                f.write(f"{int(t)},{d.channel},{sc:.3f},{int(d.holding)},{mo:.1f},{bc:.2f}\n")
             if act:
                 set_mute(act == "mute")
                 frame = ""
