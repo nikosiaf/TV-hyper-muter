@@ -9,7 +9,8 @@ class Decider:
     def __init__(self, miss_s=25, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15,
                  absent=0.30, absent_frac=0.9, arm_gap_s=10,
                  max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3, news_unmute=0.4, news_hold_s=30,
-                 arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15):
+                 arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15,
+                 band_now=0.5, band_now_n=5):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
@@ -18,6 +19,8 @@ class Decider:
         self.static, self.static_frac = static, static_frac
         # fixed bottom band (news ticker, talk-show captions) = not an ad (Alpha news 2026-11-03)
         self.news_band = news_band
+        # ... or fixed graphics that just appeared: median of the last band_now_n frames (Mega weather 2026-11-03)
+        self.band_now, self.band_now_n = band_now, band_now_n
         # while muted: fixed band for news_hold_s = news right after the break (Open 2026-11-03)
         self.news_unmute, self.news_hold_s = news_unmute, news_hold_s
         # per-channel cap: Skai news can follow an ad break with no badge (2026-11-03)
@@ -113,7 +116,8 @@ class Decider:
         gone = sum(h[1] < absent for h in hw) >= self.absent_frac * len(hw)
         still = sum(h[2] < self.static for h in hw) >= self.static_frac * len(hw)
         bands = sorted(h[3] for h in hw)
-        news = bands[len(bands) // 2] >= nb
+        recent = sorted(h[3] for h in hw[-self.band_now_n:])
+        news = bands[len(bands) // 2] >= nb or recent[len(recent) // 2] >= self.band_now
         if not tv_muted and full and gone and not still and not news:
             self.muted_at = t
             self.back = 0

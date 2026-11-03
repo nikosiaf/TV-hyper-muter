@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+- No mute while fixed graphics have just appeared: band median of the last 5 frames (10 s)
+  >= `news_band_now` 0.5. Mega 2026-11-03 20:55: the weather map (band 0.57-0.88) appeared just
+  before the 25 s window filled and was muted; all real ad mutes that day were at <= 0.33.
+- Skai `max_mute_minutes` 9 -> 11: an 11 min break on 2026-11-03 21:47 was unmuted by the
+  cap during the promos at the end.
+
 ## 0.6.0
 
 - Per-channel `arm_on` (badge level that counts for arming only); Mega 0.45: its badge scores

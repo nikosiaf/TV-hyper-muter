@@ -115,7 +115,8 @@ def main():
                 arm_on_by_channel={c["name"]: c["arm_on"] for c in o["channels"] if c.get("arm_on")},
                 zap_in=o["zap_in"],
                 static=o["static_motion"], static_frac=o["static_fraction"],
-                news_band=o["news_band"], news_unmute=o["news_unmute"], news_hold_s=o["news_hold_s"])
+                news_band=o["news_band"], news_unmute=o["news_unmute"], news_hold_s=o["news_hold_s"],
+                band_now=o.get("news_band_now", 0.5))
     hyp = Hyperion(o["hyperion_host"], o["hyperion_port"])
     log("start", dry_run=o["dry_run"], channels=[c for c, _ in CHANNELS])
     next_poll, tv_on, tv_muted, enabled, last_title = 0, False, False, True, object()

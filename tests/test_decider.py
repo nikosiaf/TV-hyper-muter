@@ -91,6 +91,19 @@ class DeciderTest(unittest.TestCase):
                 acts.append(a)
         self.assertEqual(acts, ["mute"])
 
+    def test_graphics_just_appeared_block_mute(self):
+        # Mega weather 2026-11-03 20:55: badge gone, band low, then a fixed map band 0.6-0.9
+        # appears just before the 25 s window fills; it must not mute
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(0, "mega", True, False)
+        acts = []
+        for i in range(60):
+            band = 0.05 if i < 14 else 0.85
+            a, _ = d.frame(i * 2, BADGE if i < 5 else NONE, False, 8.0, band)
+            if a:
+                acts.append(a)
+        self.assertEqual(acts, [])
+
     def test_news_after_break_unmutes(self):
         acts = []
         for i in range(120):
