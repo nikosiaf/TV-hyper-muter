@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.2
+
+- Mute after 25 s without the badge (was 30 s). Replay of 2026-11-03: no new false mutes,
+  one Skai break 46 s sooner. 20 s added a 4.6 min false mute on a Skai talk show.
+
+## 0.4.1
+
+- Channels can have extra badge shapes (`alt: "y,x,r;..."`). Open gets its small talk-show
+  badge (9,308,3): live talk-show frames 0 % -> 100 % above 0.5, no ad frame above 0.5.
+
 ## 0.4.0
 
 - Renamed to TV hyper muter: slug `tv_hyper_muter`, status `sensor.tv_hyper_muter`, logs in

@@ -44,5 +44,9 @@ def score_at(g, cy, cx, r, half=9, shift=None):
 
 
 def score(gray, channel):
-    cy, cx, r = CENTRES[channel]
-    return score_at(grad(gray), cy, cx, r)
+    # a channel may have several badge shapes, e.g. Open: full badge (9,307,4) at programme
+    # start, smaller one (9,308,3) during talk shows (2026-11-03); best match wins
+    c = CENTRES[channel]
+    shapes = c if isinstance(c[0], (list, tuple)) else [c]
+    g = grad(gray)
+    return max(score_at(g, cy, cx, r) for cy, cx, r in shapes)

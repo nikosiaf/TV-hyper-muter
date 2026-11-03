@@ -26,7 +26,16 @@ STATUS_ENTITY = "sensor.tv_hyper_muter"
 
 o = json.load(open(OPTIONS))
 CHANNELS = [(c["name"], re.compile(c["match"], re.I)) for c in o["channels"]]
-badge.CENTRES.update({c["name"]: (int(c["y"]), int(c["x"]), float(c["r"])) for c in o["channels"]})
+def _shapes(c):
+    # main badge shape plus optional extra shapes "y,x,r;y,x,r" (e.g. Open's small talk-show badge)
+    s = [(int(c["y"]), int(c["x"]), float(c["r"]))]
+    for part in filter(None, (c.get("alt") or "").split(";")):
+        y, x, r = part.split(",")
+        s.append((int(y), int(x), float(r)))
+    return s
+
+
+badge.CENTRES.update({c["name"]: _shapes(c) for c in o["channels"]})
 badge.SHIFT = int(o["search_shift"])
 
 

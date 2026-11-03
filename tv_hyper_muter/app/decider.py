@@ -6,7 +6,7 @@ take ("mute", "unmute" or None) plus a reason.
 
 
 class Decider:
-    def __init__(self, miss_s=30, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15,
+    def __init__(self, miss_s=25, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15,
                  absent=0.30, absent_frac=0.9, arm_gap_s=10,
                  max_mute_by_channel=None, static=2.0, static_frac=0.5):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
