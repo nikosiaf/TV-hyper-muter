@@ -2,7 +2,7 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tv_admute", "app"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tv_hyper_muter", "app"))
 from decider import Decider  # noqa: E402
 
 BADGE, NONE = 0.7, 0.1

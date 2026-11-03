@@ -1,4 +1,4 @@
-"""TV Ad Mute add-on entry point."""
+"""TV hyper muter add-on entry point."""
 import datetime as dt
 import json
 import os
@@ -17,12 +17,12 @@ import badge
 from decider import Decider
 from hyperion import Hyperion
 
-OPTIONS = os.environ.get("TVADMUTE_OPTIONS", "/data/options.json")
-OUT = os.environ.get("TVADMUTE_OUT", "/share/tv_admute")
+OPTIONS = os.environ.get("TVHYPERMUTER_OPTIONS", "/data/options.json")
+OUT = os.environ.get("TVHYPERMUTER_OUT", "/share/tv_hyper_muter")
 # Inside the add-on the Supervisor proxies Core; HA_URL/HA_TOKEN allow running outside it for tests.
 HA_URL = os.environ.get("HA_URL", "http://supervisor/core/api")
 HA_TOKEN = os.environ.get("HA_TOKEN") or os.environ.get("SUPERVISOR_TOKEN", "")
-STATUS_ENTITY = "sensor.tv_admute"
+STATUS_ENTITY = "sensor.tv_hyper_muter"
 
 o = json.load(open(OPTIONS))
 CHANNELS = [(c["name"], re.compile(c["match"], re.I)) for c in o["channels"]]
@@ -83,12 +83,12 @@ def set_mute(on):
 
 
 def publish(status, channel=None, score=None, mutes=0):
-    if os.environ.get("TVADMUTE_NO_STATUS"):
+    if os.environ.get("TVHYPERMUTER_NO_STATUS"):
         return
     try:
         ha("POST", f"/states/{STATUS_ENTITY}", {
             "state": status,
-            "attributes": {"friendly_name": "TV ad mute", "icon": "mdi:television-off",
+            "attributes": {"friendly_name": "TV hyper muter", "icon": "mdi:television-off",
                            "channel": channel, "badge_score": score, "mutes_today": mutes,
                            "dry_run": o["dry_run"]}})
     except Exception as e:

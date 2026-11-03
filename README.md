@@ -1,4 +1,4 @@
-# TV Ad Mute – Home Assistant add-on
+# TV hyper muter – Home Assistant add-on
 
 Mutes an LG webOS TV during ad breaks on Live TV, and unmutes when the programme returns.
 
@@ -17,7 +17,7 @@ Nothing is installed or changed on the TV.
 ## Install
 
 Home Assistant → Settings → Add-ons → Add-on store → ⋮ → Repositories → add this
-repository's URL, then install **TV Ad Mute**. For a private repository, use
+repository's URL, then install **TV hyper muter**. For a private repository, use
 `https://<user>:<token>@github.com/<user>/TV-hyper-muter` with a read-only token.
 
-See [DOCS](tv_admute/DOCS.md) for options, logs and tuning.
+See [DOCS](tv_hyper_muter/DOCS.md) for options, logs and tuning.

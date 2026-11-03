@@ -1,4 +1,4 @@
-# TV Ad Mute
+# TV hyper muter
 
 ## How it decides
 
@@ -37,13 +37,13 @@
 
 ## Status entity
 
-`sensor.tv_admute` shows `idle`, `watching`, `muted`, `disabled` or `stopped`, with
+`sensor.tv_hyper_muter` shows `idle`, `watching`, `muted`, `disabled` or `stopped`, with
 attributes `channel`, `badge_score`, `mutes_today` and `dry_run`. It is recreated when the
 add-on starts (it is not stored by Home Assistant across restarts).
 
 ## Logs
 
-`/share/tv_admute/<date>/`: `events.jsonl` (every decision), `scores.csv` (badge score per
+`/share/tv_hyper_muter/<date>/`: `events.jsonl` (every decision), `scores.csv` (badge score per
 frame) and the saved frames. The add-on log shows the same events.
 
 ## Adding a channel

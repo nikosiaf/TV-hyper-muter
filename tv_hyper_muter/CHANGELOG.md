@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- Renamed to TV hyper muter: slug `tv_hyper_muter`, status `sensor.tv_hyper_muter`, logs in
+  `/share/tv_hyper_muter`. HA sees it as a new add-on; remove the old TV Ad Mute entry if listed.
+
 ## 0.3.1
 
 - Fix install: add build.yaml (HA base image per arch) and an Alpine default for
