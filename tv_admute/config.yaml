@@ -5,7 +5,7 @@ description: >
   Mutes an LG webOS TV during ad breaks on Live TV. Reads the picture from Hyperion
   (PicCap on a rooted TV) and mutes through Home Assistant while the channel's
   age-rating badge is missing.
-url: https://github.com/nikosiaf/tv-admute-addon
+url: https://github.com/nikosiaf/TV-hyper-muter
 arch:
   - amd64
   - aarch64

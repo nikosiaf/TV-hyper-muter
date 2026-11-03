@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.0
+
+- No mute while the picture is still (centre of the screen barely changes in half of the
+  window). Still screens at the start of the news looked like an ad break. In labelled
+  recordings ads were never still for more than ~10 s. Options `static_motion`,
+  `static_fraction`; scores.csv gets a motion column.
+
+## 0.2.3
+
+- Mute after 30 s without the badge (was 60 s): breaks are muted ~26 s sooner.
+
+## 0.2.2
+
+- Optional per-channel `max_mute_minutes`; Skai set to 9 (news can follow a break).
+
+## 0.2.1
+
+- Arm only when the badge sightings come within 10 s of each other. Scattered news graphics
+  had added up to an arm and muted the Skai news.
+
 ## 0.2.0
 
 - Mute only when the badge is clearly gone (score below 0.30 in 90 % of the last minute), not

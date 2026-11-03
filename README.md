@@ -18,6 +18,6 @@ Nothing is installed or changed on the TV.
 
 Home Assistant → Settings → Add-ons → Add-on store → ⋮ → Repositories → add this
 repository's URL, then install **TV Ad Mute**. For a private repository, use
-`https://<user>:<token>@github.com/<user>/tv-admute-addon` with a read-only token.
+`https://<user>:<token>@github.com/<user>/TV-hyper-muter` with a read-only token.
 
 See [DOCS](tv_admute/DOCS.md) for options, logs and tuning.
