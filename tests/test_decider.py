@@ -46,6 +46,13 @@ class DeciderTest(unittest.TestCase):
         self.assertEqual(acts[1][0] - acts[0][0], 540)
         self.assertEqual(acts[1][2], "max mute time")
 
+    def test_30s_window_mutes_about_30s_after_badge_goes(self):
+        d = Decider(miss_s=30, max_mute_s=720)
+        d.state(0, "alpha", True, False)
+        acts = run(d, [BADGE] * 5 + [NONE] * 30)
+        self.assertEqual([a for _, a, _ in acts], ["mute"])
+        self.assertTrue(28 <= acts[0][0] - 8 <= 34)  # last badge frame at t=8
+
     def test_never_arms_without_badge(self):
         self.assertEqual(run(self.d, [NONE] * 200), [])
 
