@@ -33,6 +33,11 @@ class DeciderTest(unittest.TestCase):
         acts = run(self.d, [BADGE] * 5 + [NONE] * 35 + [BADGE] + [NONE] * 5)
         self.assertEqual([a for _, a, _ in acts], ["mute"])
 
+    def test_scattered_badge_hits_do_not_arm(self):
+        # news on Skai 2026-11-03: single >=0.5 frames minutes apart re-armed and muted the news
+        scores = ([NONE] * 100 + [BADGE]) * 3 + [NONE] * 60
+        self.assertEqual(run(self.d, scores), [])
+
     def test_never_arms_without_badge(self):
         self.assertEqual(run(self.d, [NONE] * 200), [])
 

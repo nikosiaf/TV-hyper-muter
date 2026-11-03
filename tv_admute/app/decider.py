@@ -7,10 +7,11 @@ take ("mute", "unmute" or None) plus a reason.
 
 class Decider:
     def __init__(self, miss_s=60, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15,
-                 absent=0.30, absent_frac=0.9):
+                 absent=0.30, absent_frac=0.9, arm_gap_s=10):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
+        self.arm_gap_s = arm_gap_s
         self.channel = None
         self.muted_at = None  # time we muted; None while we hold no mute
         self._reset()
@@ -45,6 +46,11 @@ class Decider:
         if self.channel is None:
             return None, None
         if score >= self.on:
+            # arm only on a steady badge: sightings spread out over minutes (news graphics in
+            # the badge corner) must not add up to an arm
+            if (self.seen < self.arm_sightings and self.last_seen is not None
+                    and t - self.last_seen > self.arm_gap_s):
+                self.seen = 0
             self.seen += 1
             self.last_seen = t
             self.back += 1
