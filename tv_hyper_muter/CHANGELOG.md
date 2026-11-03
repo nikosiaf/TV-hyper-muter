@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1
+
+- Fix: every Home Assistant call failed with 401 Unauthorized. The base image's s6 init
+  started the app with a clean environment, without `SUPERVISOR_TOKEN` (and `TZ`, so log
+  times were UTC). The app now runs directly as the container entrypoint.
+
 ## 0.8.0
 
 - New channel Kontra (badge y 12, x 300, r 4.5; programme 0.70-0.75). Its ads score up to
