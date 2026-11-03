@@ -2,6 +2,7 @@ import sys, os
 from PIL import Image, ImageDraw, ImageFont
 S = 1024
 INK = (38, 34, 58, 255)
+RED = (225, 40, 50, 255)
 W = 26  # outline width
 
 def tv(size):
@@ -51,6 +52,6 @@ big.alpha_composite(tv(380), (0, 10))
 d = ImageDraw.Draw(big)
 font, small = ImageFont.load_default(118), ImageFont.load_default(118)
 for txt, y, fnt in (("TV hyper", 60, font), ("muter", 200, small)):
-    d.text((405, y), txt, font=fnt, fill=INK, stroke_width=3, stroke_fill=INK)
-big.resize((250, 100), Image.LANCZOS).save(f"{out}/logo.png")
+    d.text((405, y), txt, font=fnt, fill=RED, stroke_width=3, stroke_fill=RED)
+big.resize((500, 200), Image.LANCZOS).save(f"{out}/logo.png")  # 2x the usual 250x100
 tv(512).save(f"{out}/preview.png")

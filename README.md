@@ -1,4 +1,4 @@
-<img src="tv_hyper_muter/logo.png" alt="TV hyper muter" width="250">
+<img src="tv_hyper_muter/logo.png" alt="TV hyper muter" width="400">
 
 # TV hyper muter – Home Assistant add-on
 

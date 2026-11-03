@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- Logo twice the size (500×200) with the name in red.
+
 ## 0.9.0
 
 - New cartoon icon and logo.
