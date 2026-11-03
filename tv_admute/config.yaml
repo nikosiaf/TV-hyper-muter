@@ -1,0 +1,69 @@
+name: TV Ad Mute
+slug: tv_admute
+version: "0.1.0"
+description: >
+  Mutes an LG webOS TV during ad breaks on Live TV. Reads the picture from Hyperion
+  (PicCap on a rooted TV) and mutes through Home Assistant while the channel's
+  age-rating badge is missing.
+url: https://github.com/nikosiaf/tv-admute-addon
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+homeassistant_api: true
+map:
+  - share:rw
+
+options:
+  tv_entity: media_player.tv
+  live_source: Live TV
+  hyperion_host: 192.168.10.30
+  hyperion_port: 8090
+  enable_entity: ""
+  dry_run: false
+  frame_interval_s: 2
+  state_poll_s: 5
+  miss_seconds: 60
+  max_mute_minutes: 12
+  badge_on: 0.5
+  badge_off: 0.45
+  search_shift: 2
+  arm_sightings: 3
+  save_frames: true
+  keep_days: 14
+  channels:
+    - {name: open, match: "\\bOPEN\\b", y: 9, x: 307, r: 4}
+    - {name: mega, match: "\\bMEGA\\b", y: 10, x: 298, r: 4}
+    - {name: ant1, match: "\\bANT\\s*1\\b", y: 14, x: 306, r: 4}
+    - {name: star, match: "\\bSTAR\\b", y: 12, x: 301, r: 4}
+    - {name: alpha, match: "\\bALPHA\\b", y: 11, x: 302, r: 5}
+    - {name: skai, match: "\\bSKAI\\b|ΣΚΑΪ|ΣΚΑΙ", y: 10, x: 13, r: 4}
+    - {name: ert1, match: "\\b(ERT|ΕΡΤ)\\s*1\\b", y: 12, x: 301, r: 4}
+    - {name: ert2, match: "\\b(ERT|ΕΡΤ)\\s*2\\b", y: 12, x: 301, r: 4}
+    - {name: ert3, match: "\\b(ERT|ΕΡΤ)\\s*3\\b", y: 12, x: 301, r: 4}
+
+schema:
+  tv_entity: str
+  live_source: str
+  hyperion_host: str
+  hyperion_port: port
+  enable_entity: str
+  dry_run: bool
+  frame_interval_s: int(1,10)
+  state_poll_s: int(2,30)
+  miss_seconds: int(10,300)
+  max_mute_minutes: int(1,30)
+  badge_on: float(0,1)
+  badge_off: float(0,1)
+  search_shift: int(0,4)
+  arm_sightings: int(1,20)
+  save_frames: bool
+  keep_days: int(1,90)
+  channels:
+    - name: str
+      match: str
+      y: int(9,170)
+      x: int(9,310)
+      r: float(3,8)

@@ -1,0 +1,64 @@
+"""Mute decisions, kept free of I/O so they can be unit-tested and replayed.
+
+Feed it `state()` every poll and `frame()` for every badge score; it returns the action to
+take ("mute", "unmute" or None) plus a reason.
+"""
+
+
+class Decider:
+    def __init__(self, miss_s=60, max_mute_s=720, on=0.5, off=0.45, arm_sightings=3, grace_s=15):
+        self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
+        self.on, self.off, self.arm_sightings = on, off, arm_sightings
+        self.channel = None
+        self.muted_at = None  # time we muted; None while we hold no mute
+        self._reset()
+
+    def _reset(self):
+        self.seen = 0
+        self.last_seen = None
+        self.back = 0
+
+    @property
+    def holding(self):
+        return self.muted_at is not None
+
+    def state(self, t, channel, tv_on, tv_muted):
+        """channel = calibrated channel name on Live TV, else None."""
+        if self.holding and tv_on and not tv_muted and t - self.muted_at > self.grace_s:
+            # the user unmuted during our mute (HA state may lag our own mute by a few
+            # seconds, hence the grace): back off until the badge is seen again
+            self.muted_at = None
+            self._reset()
+            return None, "user unmuted"
+        if channel != self.channel:
+            self.channel = channel
+            self._reset()
+            if self.holding:
+                self.muted_at = None
+                return ("unmute" if tv_on else None), "channel/source change"
+        return None, None
+
+    def frame(self, t, score, tv_muted):
+        if self.channel is None:
+            return None, None
+        if score >= self.on:
+            self.seen += 1
+            self.last_seen = t
+            self.back += 1
+        elif score < self.off:
+            self.back = 0
+        if self.holding:
+            if self.back >= 2:
+                self.muted_at = None
+                return "unmute", "badge back"
+            if t - self.muted_at >= self.max_mute_s:
+                self.muted_at = None
+                self._reset()
+                return "unmute", "max mute time"
+            return None, None
+        armed = self.seen >= self.arm_sightings and self.last_seen is not None
+        if armed and not tv_muted and t - self.last_seen >= self.miss_s:
+            self.muted_at = t
+            self.back = 0
+            return "mute", f"badge missing {int(t - self.last_seen)} s"
+        return None, None
