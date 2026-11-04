@@ -21,7 +21,7 @@ def run(d, scores, start=0, step=2, tv_muted=False):
 class DeciderTest(unittest.TestCase):
     def setUp(self):
         self.d = Decider(miss_s=60, max_mute_s=720)
-        self.d.state(0, "alpha", True, False)
+        self.d.state(-30, "alpha", True, False)  # channel set well before the frames (zap settle)
 
     def test_mutes_after_60s_and_unmutes_when_badge_returns(self):
         acts = run(self.d, [BADGE] * 5 + [NONE] * 40 + [BADGE] * 3)
@@ -37,12 +37,12 @@ class DeciderTest(unittest.TestCase):
         # news on Skai 2026-11-03: single >=0.5 frames minutes apart re-armed and muted the news
         scores = ([NONE] * 100 + [BADGE]) * 3 + [NONE] * 60
         d = Decider(miss_s=60, max_mute_s=720, zap_in=False)  # arming logic only
-        d.state(0, "alpha", True, False)
+        d.state(-30, "alpha", True, False)
         self.assertEqual(run(d, scores), [])
 
     def test_per_channel_max_mute(self):
         d = Decider(miss_s=60, max_mute_s=720, max_mute_by_channel={"skai": 540})
-        d.state(0, "skai", True, False)
+        d.state(-30, "skai", True, False)
         acts = run(d, [BADGE] * 5 + [NONE] * 400)
         self.assertEqual([a for _, a, _ in acts], ["mute", "unmute"])
         self.assertEqual(acts[1][0] - acts[0][0], 540)
@@ -50,7 +50,7 @@ class DeciderTest(unittest.TestCase):
 
     def test_30s_window_mutes_about_30s_after_badge_goes(self):
         d = Decider(miss_s=30, max_mute_s=720)
-        d.state(0, "alpha", True, False)
+        d.state(-30, "alpha", True, False)
         acts = run(d, [BADGE] * 5 + [NONE] * 30)
         self.assertEqual([a for _, a, _ in acts], ["mute"])
         self.assertTrue(28 <= acts[0][0] - 8 <= 34)  # last badge frame at t=8
@@ -95,7 +95,7 @@ class DeciderTest(unittest.TestCase):
         # Mega weather 2026-11-03 20:55: badge gone, band low, then a fixed map band 0.6-0.9
         # appears just before the 25 s window fills; it must not mute
         d = Decider(miss_s=25, max_mute_s=720)
-        d.state(0, "mega", True, False)
+        d.state(-30, "mega", True, False)
         acts = []
         for i in range(60):
             band = 0.05 if i < 14 else 0.85
@@ -108,7 +108,7 @@ class DeciderTest(unittest.TestCase):
         # Kontra ads score 0.30-0.38 in a quarter of the frames: mutes only with its own 0.40 level
         for per, want in (({}, []), ({"kontra": 0.4}, ["mute"])):
             d = Decider(miss_s=25, max_mute_s=720, absent_by_channel=per)
-            d.state(0, "kontra", True, False)
+            d.state(-30, "kontra", True, False)
             acts = []
             for i in range(40):
                 sc = 0.72 if i < 5 else (0.35 if i % 3 == 0 else 0.1)
@@ -120,7 +120,7 @@ class DeciderTest(unittest.TestCase):
     def test_faint_badge_is_not_possible_ad(self):
         # Mega's badge scores 0.40-0.50 in programmes: armed, not possible_ad
         d = Decider(miss_s=25, max_mute_s=720)
-        d.state(0, "mega", True, False)
+        d.state(-30, "mega", True, False)
         for i in range(10):
             d.frame(i * 2, BADGE if i < 4 else 0.40, False, 50.0, 0.05)
         self.assertEqual(d.phase, "armed")
@@ -150,7 +150,7 @@ class DeciderTest(unittest.TestCase):
 
     def test_never_arms_without_badge(self):
         d = Decider(miss_s=60, max_mute_s=720, zap_in=False)
-        d.state(0, "alpha", True, False)
+        d.state(-30, "alpha", True, False)
         self.assertEqual(run(d, [NONE] * 200), [])
 
     def test_zap_in_mutes_after_60s_without_badge(self):
@@ -171,7 +171,7 @@ class DeciderTest(unittest.TestCase):
 
     def test_arm_on_per_channel(self):
         d = Decider(miss_s=25, max_mute_s=720, arm_on_by_channel={"mega": 0.45}, zap_in=False)
-        d.state(0, "mega", True, False)
+        d.state(-30, "mega", True, False)
         acts = run(d, [0.47] * 5 + [NONE] * 20)
         self.assertEqual([a for _, a, _ in acts], ["mute"])
 
@@ -213,6 +213,28 @@ class DeciderTest(unittest.TestCase):
         run(self.d, [BADGE] * 5 + [NONE] * 40)
         self.assertEqual(self.d.state(200, None, False, True), (None, "channel/source change"))
 
+
+
+class ZapSettleTest(unittest.TestCase):
+    def test_channel_banner_after_zap_does_not_arm(self):
+        # Skai 2026-11-04 20:35: three ~0.52 frames from the TV's channel banner, then news
+        # with a changing lower band and no badge -> must not mute
+        d = Decider()
+        d.state(0, "skai", True, False)
+        acts = []
+        for i, sc in enumerate([0.52, 0.53, 0.52] + [0.1] * 60):
+            a, _ = d.frame(i * 2, sc, False, motion=50.0, band=0.25)
+            if a:
+                acts.append(a)
+        self.assertEqual(acts, [])
+
+    def test_real_badge_still_arms_soon_after_zap(self):
+        d = Decider()
+        d.state(0, "skai", True, False)
+        for i, sc in enumerate([0.7] * 10):
+            d.frame(i * 2, sc, False)
+        self.assertGreaterEqual(d.seen, 3)
+        self.assertEqual(d.phase, "armed")
 
 if __name__ == "__main__":
     unittest.main()

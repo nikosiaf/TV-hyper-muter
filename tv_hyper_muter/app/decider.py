@@ -10,7 +10,8 @@ class Decider:
                  absent=0.30, absent_frac=0.9, arm_gap_s=10,
                  max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3, news_unmute=0.4, news_hold_s=30,
                  arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15,
-                 band_now=0.5, band_now_n=5, absent_by_channel=None, max_gap_s=8, no_picture_s=60):
+                 band_now=0.5, band_now_n=5, absent_by_channel=None, max_gap_s=8, no_picture_s=60,
+                 unmute_hold_s=0, unmute_hold_by_channel=None, hold_dips=2, zap_settle_s=8):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
@@ -35,6 +36,17 @@ class Decider:
         # come every 2-3 s, max 6 s in 25k trial frames); while muted, no frame for no_picture_s
         # releases the mute instead of waiting for the max mute time
         self.max_gap_s, self.no_picture_s = max_gap_s, no_picture_s
+        # badge back must last unmute_hold_s before unmuting: Skai promos for its own shows carry
+        # the badge for 18-30 s inside a break (2026-11-04); hold_dips frames in a row below the
+        # absent level end the run
+        self.unmute_hold_s = unmute_hold_s
+        self.unmute_hold_by_channel = unmute_hold_by_channel or {}
+        self.hold_dips = hold_dips
+        self.back_since, self.back_ok, self.dips = None, False, 0
+        # right after a channel change the TV's own channel banner can look like a badge for 4-6 s
+        # (score ~0.52, Skai/Mega 2026-11-04): such sightings must not arm the mute
+        self.zap_settle_s = zap_settle_s
+        self.changed_at = None
         self.last_frame_t = None
         self.last_score = None
         self.fresh = False  # True from a channel change until the badge arms or any unmute
@@ -102,6 +114,7 @@ class Decider:
             return None, "user unmuted"
         if channel != self.channel:
             self.channel = channel
+            self.changed_at = t
             self._reset()
             self.fresh = True
             if self.holding:
@@ -113,7 +126,8 @@ class Decider:
         if self.channel is None:
             return None, None
         self.last_frame_t, self.last_score = t, score
-        if score >= self.arm_on_by_channel.get(self.channel, self.on):
+        settling = self.changed_at is not None and t - self.changed_at < self.zap_settle_s
+        if score >= self.arm_on_by_channel.get(self.channel, self.on) and not settling:
             # arm only on a steady badge: sightings spread out over minutes (news graphics in
             # the badge corner) must not add up to an arm
             if (self.seen < self.arm_sightings and self.last_seen is not None
@@ -134,7 +148,19 @@ class Decider:
                 self.news_since = self.news_since if self.news_since is not None else t
             else:
                 self.news_since = None
-            if self.back >= 2:
+            hold = self.unmute_hold_by_channel.get(self.channel, self.unmute_hold_s)
+            if score < self.absent_by_channel.get(self.channel, self.absent):
+                self.dips += 1
+                if self.dips >= self.hold_dips:
+                    self.back_since, self.back_ok = None, False
+            else:
+                self.dips = 0
+            if score >= self.on and self.back_since is None:
+                self.back_since = t
+            if self.back >= 2 and self.back_since is not None:
+                self.back_ok = True
+            if self.back_ok and t - self.back_since >= hold:
+                self.back_since, self.back_ok, self.dips = None, False, 0
                 self.muted_at = None
                 self.hist = []
                 self.fresh = False
@@ -168,6 +194,7 @@ class Decider:
             self.muted_at = t
             self.back = 0
             self.mhist, self.news_since = [], None
+            self.back_since, self.back_ok, self.dips = None, False, 0
             if armed:
                 return "mute", f"badge missing {int(t - self.last_seen)} s"
             return "mute", "zap-in: no badge since channel change"

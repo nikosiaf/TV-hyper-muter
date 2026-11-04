@@ -1,7 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.11.0
 
+- Badge sightings in the first 8 s after a channel change no longer arm the mute: the TV's own
+  channel banner scores like a faint badge (~0.52) for 4-6 s. On 2026-11-04 20:35 this armed
+  the muter on the Skai news (no badge), which then muted the news. Replay of 2026-11-03/04:
+  that mute and one other banner-armed Skai mute disappear, a real Skai break is still muted
+  (by the zap-in rule, ~1 min later), nothing else changes.
+- Internal, not yet an option: optional per-channel "unmute hold" (badge must stay for N s
+  before unmuting) for Skai's own promos; off by default while data is collected.
 - Status `possible_ad` uses the same "clearly gone" level as the mute rule (`absent_below`,
   or the channel's own), so a faint badge (Mega 0.40-0.50) no longer flickers the status
   between `armed` and `possible_ad`.
