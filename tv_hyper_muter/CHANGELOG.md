@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.1
+
+- The zap-in rule (muting when you switch into a break before any badge was seen) now only
+  applies in the first 12 minutes after a channel change. Live football on Mega (no age badge,
+  the "UCL" logo in the badge corner) was muted 26 minutes in. Replay of 2026-11-03/04: that
+  mute and one Mega break after a badge-less programme 12.8 min in are no longer muted;
+  nothing else changes.
+
 ## 0.11.0
 
 - Badge sightings in the first 8 s after a channel change no longer arm the mute: the TV's own

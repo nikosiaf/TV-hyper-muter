@@ -11,7 +11,7 @@ class Decider:
                  max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3, news_unmute=0.4, news_hold_s=30,
                  arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15,
                  band_now=0.5, band_now_n=5, absent_by_channel=None, max_gap_s=8, no_picture_s=60,
-                 unmute_hold_s=0, unmute_hold_by_channel=None, hold_dips=2, zap_settle_s=8):
+                 unmute_hold_s=0, unmute_hold_by_channel=None, hold_dips=2, zap_settle_s=8, zap_window_s=720):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
@@ -46,6 +46,9 @@ class Decider:
         # right after a channel change the TV's own channel banner can look like a badge for 4-6 s
         # (score ~0.52, Skai/Mega 2026-11-04): such sightings must not arm the mute
         self.zap_settle_s = zap_settle_s
+        # the zap-in rule is for switching INTO a break; after this long on a channel with no badge
+        # seen, the programme itself has no badge (live football on Mega 2026-11-04 21:18, 26 min in)
+        self.zap_window_s = zap_window_s
         self.changed_at = None
         self.last_frame_t = None
         self.last_score = None
@@ -176,7 +179,9 @@ class Decider:
         self.hist = [h for h in self.hist + [(t, score, motion, band)]
                      if t - h[0] <= max(self.miss_s, self.zap_s)]
         armed = self.seen >= self.arm_sightings and self.last_seen is not None
-        if not armed and not (self.zap_in and self.fresh):
+        zapping = (self.zap_in and self.fresh
+                   and (self.changed_at is None or t - self.changed_at <= self.zap_window_s))
+        if not armed and not zapping:
             return None, None
         win, absent, nb = ((self.miss_s, self.absent_by_channel.get(self.channel, self.absent), self.news_band) if armed
                            else (self.zap_s, self.zap_absent, self.zap_band))

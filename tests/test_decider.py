@@ -236,5 +236,30 @@ class ZapSettleTest(unittest.TestCase):
         self.assertGreaterEqual(d.seen, 3)
         self.assertEqual(d.phase, "armed")
 
+
+class ZapWindowTest(unittest.TestCase):
+    def test_no_zap_in_mute_long_after_channel_change(self):
+        # live football on Mega 2026-11-04: no badge for 26 min, then a stretch that looked empty
+        d = Decider()
+        d.state(0, "mega", True, False)
+        acts = []
+        for i in range(900):  # 30 min of frames every 2 s: 26 min "programme", then 4 min "empty"
+            t = i * 2
+            sc = 0.27 if t < 26 * 60 else 0.1
+            a, _ = d.frame(t, sc, False, motion=40.0, band=0.0)
+            if a:
+                acts.append((t, a))
+        self.assertEqual(acts, [])
+
+    def test_zap_in_still_mutes_soon_after_channel_change(self):
+        d = Decider()
+        d.state(0, "mega", True, False)
+        acts = []
+        for i in range(60):
+            a, _ = d.frame(i * 2, 0.1, False, motion=40.0, band=0.0)
+            if a:
+                acts.append(a)
+        self.assertEqual(acts, ["mute"])
+
 if __name__ == "__main__":
     unittest.main()
