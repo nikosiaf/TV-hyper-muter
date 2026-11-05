@@ -300,3 +300,31 @@ class RunnerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CaptionTest(unittest.TestCase):
+    """badge.caption: two small caption lines next to a top-left badge vs a promo's day/time label."""
+
+    def frame(self, rows):
+        a = np.full((180, 320), 60.0)
+        for y in rows:
+            a[y, 18:60:2] = 230.0  # text strokes: bright/dark alternation
+        return a
+
+    def test_two_caption_lines_score_high(self):
+        self.assertGreater(main.badge.caption(self.frame([8, 9, 10, 11, 13, 14, 15]), 10, 13), 10)
+
+    def test_one_big_label_scores_low(self):
+        self.assertLessEqual(main.badge.caption(self.frame([10, 11, 12, 13, 14]), 10, 13), 0)
+
+    def test_badge_alone_scores_zero(self):
+        self.assertEqual(main.badge.caption(self.frame([]), 10, 13), 0)
+
+
+class OptionsTest(unittest.TestCase):
+    def test_hold_and_caption_options_reach_the_decider(self):
+        ch = dict(CH, unmute_hold_s=60, caption=True)
+        d = main.make_decider(options(channels=[ch]))
+        self.assertEqual(d.unmute_hold_by_channel, {"test": 60})
+        r = main.Runner(options(channels=[ch]), FakeHA(), FakeHyperion(), tempfile.mkdtemp(), "/nonexistent/s.json")
+        self.assertEqual(r.captioned, {"test": (40, 160)})

@@ -69,3 +69,18 @@ def score_grad(g, channel):
     c = CENTRES[channel]
     shapes = c if isinstance(c[0], (list, tuple)) else [c]
     return max(score_at(g, cy, cx, r) for cy, cx, r in shapes)
+
+
+def caption(gray, cy, cx):
+    """Programme caption next to a top-left badge (Skai: 'Κατάλληλο για όλους' in two small lines).
+
+    Text energy (mean horizontal brightness change) of the two caption lines minus the gap row
+    between them. Skai's own promos carry the same badge but with one big day/time label across
+    the gap row ('ΣΑΒΒΑΤΟ 14:30'), or the badge alone; both score <= 0, captions 17-40 (2026-11-04/05).
+    """
+    a = np.asarray(gray, float)
+    x0, x1 = cx + 5, cx + 47
+    if cy - 1 < 0 or cy + 2 >= a.shape[0] or x1 + 1 > a.shape[1]:
+        return 0.0
+    e = lambda y: float(np.abs(np.diff(a[y, x0:x1])).mean())
+    return min(e(cy - 1), e(cy)) - e(cy + 2)

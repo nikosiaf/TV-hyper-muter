@@ -263,3 +263,48 @@ class ZapWindowTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnmuteHoldTest(unittest.TestCase):
+    """Skai/Open/Star promos for their own shows carry the badge for 15-45 s inside a break."""
+
+    def setUp(self):
+        self.d = Decider(miss_s=30, max_mute_s=720, unmute_hold_by_channel={"skai": 60})
+        self.d.state(-30, "skai", True, False)
+
+    def muted(self):
+        acts = run(self.d, [BADGE] * 5 + [NONE] * 20)
+        self.assertEqual([a for _, a, _ in acts], ["mute"])
+        return 50
+
+    def test_short_badge_run_does_not_unmute(self):
+        t0 = self.muted()
+        acts = run(self.d, [BADGE] * 15 + [NONE] * 10, start=t0)  # 30 s promo, then ads again
+        self.assertEqual(acts, [])
+        self.assertTrue(self.d.holding)
+
+    def test_badge_that_stays_unmutes_after_hold(self):
+        t0 = self.muted()
+        acts = run(self.d, [BADGE] * 40, start=t0)
+        self.assertEqual([a for _, a, _ in acts], ["unmute"])
+        self.assertTrue(60 <= acts[0][0] - t0 <= 64)
+
+    def test_caption_unmutes_at_once(self):
+        t0 = self.muted()
+        acts = []
+        for i in range(3):
+            a, why = self.d.frame(t0 + 2 * i, BADGE, False, caption=25.0)
+            if a:
+                acts.append((a, why))
+        self.assertEqual(acts, [("unmute", "badge back with programme caption")])
+
+    def test_caption_without_badge_does_not_unmute(self):
+        t0 = self.muted()
+        a, _ = self.d.frame(t0, NONE, False, caption=25.0)
+        self.assertIsNone(a)
+
+    def test_other_channels_keep_immediate_unmute(self):
+        d = Decider(miss_s=30, max_mute_s=720, unmute_hold_by_channel={"skai": 60})
+        d.state(-30, "alpha", True, False)
+        acts = run(d, [BADGE] * 5 + [NONE] * 20 + [BADGE] * 3)
+        self.assertEqual([a for _, a, _ in acts], ["mute", "unmute"])

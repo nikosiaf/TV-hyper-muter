@@ -11,7 +11,8 @@ class Decider:
                  max_mute_by_channel=None, static=2.0, static_frac=0.5, news_band=0.3, news_unmute=0.4, news_hold_s=30,
                  arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15,
                  band_now=0.5, band_now_n=5, absent_by_channel=None, max_gap_s=8, no_picture_s=60,
-                 unmute_hold_s=0, unmute_hold_by_channel=None, hold_dips=2, zap_settle_s=8, zap_window_s=720):
+                 unmute_hold_s=0, unmute_hold_by_channel=None, hold_dips=2, zap_settle_s=8, zap_window_s=720,
+                 caption_min=10.0):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
@@ -42,6 +43,9 @@ class Decider:
         self.unmute_hold_s = unmute_hold_s
         self.unmute_hold_by_channel = unmute_hold_by_channel or {}
         self.hold_dips = hold_dips
+        # ... unless the programme's own caption is next to the badge (Skai shows 'Κατάλληλο για
+        # όλους' when a programme resumes; its promos never do): then unmute at once
+        self.caption_min = caption_min
         self.back_since, self.back_ok, self.dips = None, False, 0
         # right after a channel change the TV's own channel banner can look like a badge for 4-6 s
         # (score ~0.52, Skai/Mega 2026-11-04): such sightings must not arm the mute
@@ -125,7 +129,7 @@ class Decider:
                 return ("unmute" if tv_on else None), "channel/source change"
         return None, None
 
-    def frame(self, t, score, tv_muted, motion=99.0, band=0.0):
+    def frame(self, t, score, tv_muted, motion=99.0, band=0.0, caption=None):
         if self.channel is None:
             return None, None
         self.last_frame_t, self.last_score = t, score
@@ -162,12 +166,13 @@ class Decider:
                 self.back_since = t
             if self.back >= 2 and self.back_since is not None:
                 self.back_ok = True
-            if self.back_ok and t - self.back_since >= hold:
+            captioned = caption is not None and caption >= self.caption_min and score >= self.on
+            if captioned or (self.back_ok and t - self.back_since >= hold):
                 self.back_since, self.back_ok, self.dips = None, False, 0
                 self.muted_at = None
                 self.hist = []
                 self.fresh = False
-                return "unmute", "badge back"
+                return "unmute", "badge back with programme caption" if captioned and hold else "badge back"
             if self.news_since is not None and t - self.news_since >= self.news_hold_s:
                 self.muted_at = None
                 self._reset()  # back off until the badge returns

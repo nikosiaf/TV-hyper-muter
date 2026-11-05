@@ -52,7 +52,8 @@ def make_decider(o):
                    zap_in=o["zap_in"],
                    static=o["static_motion"], static_frac=o["static_fraction"],
                    news_band=o["news_band"], news_unmute=o["news_unmute"], news_hold_s=o["news_hold_s"],
-                   band_now=o.get("news_band_now", 0.5))
+                   band_now=o.get("news_band_now", 0.5),
+                   unmute_hold_by_channel={c["name"]: c["unmute_hold_s"] for c in chans if c.get("unmute_hold_s")})
 
 
 class HAClient:
@@ -86,6 +87,7 @@ class Runner:
         self.mono, self.wall = mono, wall
         self.channels = [(c["name"], re.compile(c["match"], re.I)) for c in o["channels"]]
         badge.CENTRES.update({c["name"]: shapes(c) for c in o["channels"]})
+        self.captioned = {c["name"]: (int(c["y"]), int(c["x"])) for c in o["channels"] if c.get("caption")}
         badge.SHIFT = int(o["search_shift"])
         self.d = make_decider(o)
         self.next_poll = 0.0
@@ -374,10 +376,11 @@ class Runner:
         self.bands = [(a_, c, b) for a_, c, b in self.bands + [(t, ch, bnd)] if t - a_ <= 12]
         held_since = self.d.muted_at
         tv_muted = False if self.d.holding else self.tv_muted  # our own mute must not block unmute logic
-        act, why = self.d.frame(t, sc, tv_muted, mo, bc)
+        cap = badge.caption(a, *self.captioned[ch]) if ch in self.captioned else None
+        act, why = self.d.frame(t, sc, tv_muted, mo, bc, cap)
         try:
             with open(f"{self.day_dir()}/scores.csv", "a") as f:
-                f.write(f"{int(wall)},{ch},{sc:.3f},{int(self.d.holding)},{mo:.1f},{bc:.2f}\n")
+                f.write(f"{int(wall)},{ch},{sc:.3f},{int(self.d.holding)},{mo:.1f},{bc:.2f},{'' if cap is None else f'{cap:.0f}'}\n")
         except OSError:
             pass
         if act == "mute":

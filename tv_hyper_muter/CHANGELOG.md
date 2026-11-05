@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.12.0
+
+- Channels' own promos no longer unmute during a break. Skai, Open and Star show the age badge on
+  promos for their own shows ("ΣΑΒΒΑΤΟ 14:30"), which looked like the programme coming back:
+  5 premature unmutes a day on Skai alone. New per-channel option `unmute_hold_s`: the badge must
+  stay that long before unmuting. Defaults: Skai 60 s, Open 45 s, Star 30 s.
+- Skai: new per-channel option `caption`. When a programme resumes, Skai shows a small caption
+  next to the badge ("Κατάλληλο για όλους"); promos never do. With the caption the muter unmutes
+  at once, without the hold (7 of 10 real returns on 2026-11-04/05).
+- Star: second badge shape bottom-right (`alt: "168,301,4"`), the age circle Star shows in series
+  and shows without the top-right badge. Its programme scored 0.1-0.25 before, so returns were missed.
+- scores.csv has a 7th column with the caption score (empty for channels without `caption`).
+- Replay of 2026-11-04/05: 54 -> 36 and 24 -> 13 mute/unmute switches; every removed one was a
+  promo unmute and the re-mute after it. Real returns without a caption come 30-60 s later.
+
 ## 0.11.1
 
 - The zap-in rule (muting when you switch into a break before any badge was seen) now only

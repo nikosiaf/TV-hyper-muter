@@ -64,7 +64,10 @@
 
 Optional per-channel fields: `max_mute_minutes` (own safety limit), `alt` (more badge shapes,
 `"y,x,r;y,x,r"`), `arm_on` (lower 'badge seen' level for arming only, for faint badges) and
-`absent_below` (own 'clearly gone' level, for channels whose ads score high).
+`absent_below` (own 'clearly gone' level, for channels whose ads score high),
+`unmute_hold_s` (the badge must stay this many seconds before unmuting: channels whose own
+promos carry the badge during a break) and `caption` (top-left badges only: unmute at once,
+without the hold, when the programme's caption is next to the badge, as on Skai).
 
 ## Status entity
 
