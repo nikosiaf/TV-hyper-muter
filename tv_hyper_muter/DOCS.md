@@ -16,14 +16,19 @@
      graphics that just appeared, such as a weather map).
 4. Zap-in (`zap_in`): after a channel change, before the badge has armed, it mutes with a
    stricter rule: score below 0.25 in 90 % of 60 s, and a changing bottom band.
-5. Unmutes when the badge is back in 2 frames in a row, when the news follows the break (band
+5. Sport (`sports_pitch`): live football has no age badge, so to the badge rules a match looks
+   like one long ad break. When at least `sports_pitch` of the picture is grass-green in the
+   median frame of the last 25 s, a match is on: it does not mute for `sports_memory_s` after
+   (close-ups and replays), and a mute it holds is released at once ("sport (pitch on screen)").
+   Green ads (green screens, teal packs, a green olive net) stay below it.
+6. Unmutes when the badge is back in 2 frames in a row, when the news follows the break (band
    match at least `news_unmute` for `news_hold_s` while muted), after `max_mute_minutes`, or
    when the channel, source or power changes, or `enable_entity` is switched off.
    While muted, if no picture arrives for 60 s it unmutes ("no picture") instead of waiting
    for `max_mute_minutes`.
-6. If you unmute during an ad, it backs off until the badge has been seen again. If you
+7. If you unmute during an ad, it backs off until the badge has been seen again. If you
    muted the TV yourself, it never unmutes it.
-7. Missing pictures are not evidence: a mute needs the whole window covered by frames, with
+8. Missing pictures are not evidence: a mute needs the whole window covered by frames, with
    no gap over 8 s. Right before muting it checks the TV again (same channel, not muted).
 
 ## Reliability
@@ -58,6 +63,7 @@
 | `news_band_now` | `0.5` | Bottom-band veto over the last 10 s |
 | `news_unmute` / `news_hold_s` | `0.4` / `30` | While muted: unmute when the band stays this fixed for this long |
 | `zap_in` | `true` | Allow the zap-in rule after a channel change |
+| `sports_pitch` / `sports_memory_s` | `0.25` / `180` | Sports veto: grass-green share of the picture (median over 25 s) that means a match, and how long after it no mute happens. `0` turns it off |
 | `save_frames` | `true` | Save the frame at every mute/unmute |
 | `keep_days` | `14` | Days of logs to keep |
 | `channels` | 10 Greek channels | `name`, `match` (regex on the channel title), badge centre `y`, `x` and radius `r` on Hyperion's 320×180 image |

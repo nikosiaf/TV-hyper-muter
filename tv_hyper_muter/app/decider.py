@@ -12,7 +12,7 @@ class Decider:
                  arm_on_by_channel=None, zap_in=True, zap_s=60, zap_absent=0.25, zap_band=0.15,
                  band_now=0.5, band_now_n=5, absent_by_channel=None, max_gap_s=8, no_picture_s=60,
                  unmute_hold_s=0, unmute_hold_by_channel=None, hold_dips=2, zap_settle_s=8, zap_window_s=720,
-                 caption_min=10.0):
+                 caption_min=10.0, sports=0.25, sports_s=25, sports_memory_s=180):
         self.miss_s, self.max_mute_s, self.grace_s = miss_s, max_mute_s, grace_s
         self.on, self.off, self.arm_sightings = on, off, arm_sightings
         self.absent, self.absent_frac = absent, absent_frac
@@ -53,6 +53,15 @@ class Decider:
         # the zap-in rule is for switching INTO a break; after this long on a channel with no badge
         # seen, the programme itself has no badge (live football on Mega 2026-11-04 21:18, 26 min in)
         self.zap_window_s = zap_window_s
+        # sport: live football has no age badge, so to the badge rules a match looks like one long ad
+        # break (Skai 2026-11-08 18:36, Mega 2026-11-04 21:18). A pitch (yellow-green grass) in the
+        # median frame of the last sports_s seconds means a match: no mute for sports_memory_s after
+        # (close-ups and replays dip for up to ~30 s), and a mute we hold is released at once.
+        # Ads never reached 0.15 in 961 recorded windows; 81 % of football windows reach 0.25.
+        # 0 turns it off.
+        self.sports, self.sports_s, self.sports_memory_s = sports, sports_s, sports_memory_s
+        self.phist = []  # (t, pitch share) over the last sports_s seconds, this channel only
+        self.sports_at = None  # last time the pitch median was at or above `sports`
         self.changed_at = None
         self.last_frame_t = None
         self.last_score = None
@@ -122,6 +131,7 @@ class Decider:
         if channel != self.channel:
             self.channel = channel
             self.changed_at = t
+            self.phist, self.sports_at = [], None
             self._reset()
             self.fresh = True
             if self.holding:
@@ -129,10 +139,27 @@ class Decider:
                 return ("unmute" if tv_on else None), "channel/source change"
         return None, None
 
-    def frame(self, t, score, tv_muted, motion=99.0, band=0.0, caption=None):
+    @property
+    def sport(self):
+        """A match was on screen within sports_memory_s (the status shows it)."""
+        return (self.sports_at is not None and self.last_frame_t is not None
+                and self.last_frame_t - self.sports_at <= self.sports_memory_s)
+
+    def frame(self, t, score, tv_muted, motion=99.0, band=0.0, caption=None, pitch=0.0):
         if self.channel is None:
             return None, None
         self.last_frame_t, self.last_score = t, score
+        if self.sports > 0:
+            self.phist = [h for h in self.phist + [(t, pitch)] if t - h[0] <= self.sports_s]
+            ps = sorted(h[1] for h in self.phist)
+            # a few frames are not a median: need most of the window
+            if len(ps) >= 5 and t - self.phist[0][0] >= self.sports_s - 8 and ps[len(ps) // 2] >= self.sports:
+                self.sports_at = t
+                if self.holding:
+                    self.muted_at = None
+                    self._reset()  # back off: no zap-in, re-arm only on the badge
+                    self.fresh = False
+                    return "unmute", "sport (pitch on screen)"
         settling = self.changed_at is not None and t - self.changed_at < self.zap_settle_s
         if score >= self.arm_on_by_channel.get(self.channel, self.on) and not settling:
             # arm only on a steady badge: sightings spread out over minutes (news graphics in
@@ -187,6 +214,8 @@ class Decider:
         zapping = (self.zap_in and self.fresh
                    and (self.changed_at is None or t - self.changed_at <= self.zap_window_s))
         if not armed and not zapping:
+            return None, None
+        if self.sport:
             return None, None
         win, absent, nb = ((self.miss_s, self.absent_by_channel.get(self.channel, self.absent), self.news_band) if armed
                            else (self.zap_s, self.zap_absent, self.zap_band))

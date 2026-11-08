@@ -308,3 +308,62 @@ class UnmuteHoldTest(unittest.TestCase):
         d.state(-30, "alpha", True, False)
         acts = run(d, [BADGE] * 5 + [NONE] * 20 + [BADGE] * 3)
         self.assertEqual([a for _, a, _ in acts], ["mute", "unmute"])
+
+
+class SportsTest(unittest.TestCase):
+    """Live football has no badge: a pitch on screen must stop and release mutes (Skai 2026-11-08)."""
+
+    def feed(self, d, frames, start=0, step=2, tv_muted=False):
+        acts = []
+        for i, (s, p) in enumerate(frames):
+            t = start + i * step
+            a, why = d.frame(t, s, tv_muted, pitch=p)
+            if a:
+                acts.append((t, a, why))
+        return acts
+
+    def test_zap_into_a_match_does_not_mute(self):
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(0, "skai", True, False)
+        self.assertEqual(self.feed(d, [(NONE, 0.6)] * 120), [])
+        self.assertTrue(d.sport)
+
+    def test_held_mute_is_released_when_the_pitch_shows(self):
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(0, "skai", True, False)
+        acts = self.feed(d, [(NONE, 0.0)] * 40 + [(NONE, 0.6)] * 20)
+        self.assertEqual([(a, w) for _, a, w in acts],
+                         [("mute", "zap-in: no badge since channel change"), ("unmute", "sport (pitch on screen)")])
+
+    def test_close_ups_inside_the_memory_do_not_mute(self):
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(0, "skai", True, False)
+        # pitch, then 2.5 min of close-ups/replays without grass: still no mute
+        self.assertEqual(self.feed(d, [(NONE, 0.6)] * 20 + [(NONE, 0.0)] * 75), [])
+
+    def test_ad_break_after_the_memory_mutes_once_armed(self):
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(0, "alpha", True, False)
+        frames = [(BADGE, 0.6)] * 20 + [(BADGE, 0.0)] * 100 + [(NONE, 0.0)] * 30
+        acts = self.feed(d, frames)
+        self.assertEqual([a for _, a, _ in acts], ["mute"])
+        self.assertGreater(acts[0][0], 40 + 180)
+
+    def test_green_ad_flashes_do_not_count(self):
+        # a few green frames (green-screen promo) inside a break: median stays low
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(-30, "alpha", True, False)
+        frames = [(BADGE, 0.0)] * 5 + [(NONE, 0.8 if i % 4 == 0 else 0.0) for i in range(40)]
+        self.assertEqual([a for _, a, _ in self.feed(d, frames)], ["mute"])
+
+    def test_channel_change_forgets_the_match(self):
+        d = Decider(miss_s=25, max_mute_s=720)
+        d.state(0, "skai", True, False)
+        self.feed(d, [(NONE, 0.6)] * 20)
+        d.state(41, "alpha", True, False)
+        self.assertFalse(d.sport)
+
+    def test_off(self):
+        d = Decider(miss_s=25, max_mute_s=720, sports=0)
+        d.state(0, "skai", True, False)
+        self.assertEqual([a for _, a, _ in self.feed(d, [(NONE, 0.6)] * 60)], ["mute"])

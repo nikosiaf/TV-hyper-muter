@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.13.0
+
+- Sports veto: live football has no age-rating badge, so the zap-in rule muted a Skai match on
+  2026-11-08 (twice, 18:36 and 18:43) and a Mega match on 2026-11-04. Now, when a quarter of the
+  picture is pitch-green (yellow-green grass, median over 25 s), the muter does not mute for the
+  next 3 minutes, and a mute it holds is released at once ("sport (pitch on screen)").
+  New options `sports_pitch` (0.25, `0` = off) and `sports_memory_s` (180).
+- Measured on recordings: 0 of 961 ad windows reach 0.15 (green-screen promos, teal product ads
+  and a green olive-net teleshopping spot included); 81 % of football windows reach 0.25, the
+  rest are close-ups and replays of up to ~30 s, covered by the 3 minutes.
+- The status sensor has a `sport` attribute; scores.csv has an 8th column with the pitch share.
+
 ## 0.12.0
 
 - Channels' own promos no longer unmute during a break. Skai, Open and Star show the age badge on

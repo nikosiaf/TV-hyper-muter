@@ -22,6 +22,7 @@ import numpy as np
 from PIL import Image
 
 import badge
+import sports
 from decider import Decider
 from hyperion import Hyperion
 
@@ -53,7 +54,9 @@ def make_decider(o):
                    static=o["static_motion"], static_frac=o["static_fraction"],
                    news_band=o["news_band"], news_unmute=o["news_unmute"], news_hold_s=o["news_hold_s"],
                    band_now=o.get("news_band_now", 0.5),
-                   unmute_hold_by_channel={c["name"]: c["unmute_hold_s"] for c in chans if c.get("unmute_hold_s")})
+                   unmute_hold_by_channel={c["name"]: c["unmute_hold_s"] for c in chans if c.get("unmute_hold_s")},
+                   # saved add-on options keep only the keys they had: new options need a default here
+                   sports=o.get("sports_pitch", 0.25), sports_memory_s=o.get("sports_memory_s", 180))
 
 
 class HAClient:
@@ -70,7 +73,8 @@ class HAClient:
 
 
 def to_gray(img):
-    """Decode a frame to a 320x180 grey array; other 16:9 sizes are scaled, others refused."""
+    """Decode a frame to a 320x180 grey image; other 16:9 sizes are scaled, others refused.
+    Returns (grey, original size, colour image at 320x180)."""
     im = Image.open(BytesIO(img))
     im.load()
     w, h = im.size
@@ -78,7 +82,7 @@ def to_gray(img):
         if w < 160 or h < 90 or w > 4096 or h > 4096 or abs(w / h - 16 / 9) > 0.02:
             raise ValueError(f"unsupported frame size {w}x{h} (need 16:9)")
         im = im.resize(SIZE, Image.BILINEAR)
-    return im.convert("L"), (w, h)
+    return im.convert("L"), (w, h), im
 
 
 class Runner:
@@ -193,7 +197,7 @@ class Runner:
             state = "would_mute"
         else:
             state = self.d.phase
-        key = (state, self.d.channel, self.mutes, self.reason, self.enable_problem)
+        key = (state, self.d.channel, self.mutes, self.reason, self.enable_problem, self.d.sport)
         if not force and key == self.status_key and t - self.last_pub < 30:
             return
         left = None
@@ -202,7 +206,7 @@ class Runner:
         attrs = {"friendly_name": "TV hyper muter", "icon": "mdi:television-off",
                  "channel": self.d.channel, "badge_score": self.last_score,
                  "mutes_today": self.mutes, "dry_run": self.o["dry_run"],
-                 "reason": self.reason, "mute_left_s": left,
+                 "reason": self.reason, "mute_left_s": left, "sport": self.d.sport,
                  "last_frame": None if self.last_frame_wall is None else
                  dt.datetime.fromtimestamp(self.last_frame_wall).isoformat(timespec="seconds"),
                  "problem": self.enable_problem}
@@ -343,7 +347,7 @@ class Runner:
         t, wall = self.mono(), self.wall()
         try:
             img = self.hyp.frame()
-            gray, size = to_gray(img)
+            gray, size, colour = to_gray(img)
         except Exception as e:
             self.frame_errors += 1
             self.hyp.close()
@@ -377,10 +381,11 @@ class Runner:
         held_since = self.d.muted_at
         tv_muted = False if self.d.holding else self.tv_muted  # our own mute must not block unmute logic
         cap = badge.caption(a, *self.captioned[ch]) if ch in self.captioned else None
-        act, why = self.d.frame(t, sc, tv_muted, mo, bc, cap)
+        pt = sports.pitch(colour)
+        act, why = self.d.frame(t, sc, tv_muted, mo, bc, cap, pt)
         try:
             with open(f"{self.day_dir()}/scores.csv", "a") as f:
-                f.write(f"{int(wall)},{ch},{sc:.3f},{int(self.d.holding)},{mo:.1f},{bc:.2f},{'' if cap is None else f'{cap:.0f}'}\n")
+                f.write(f"{int(wall)},{ch},{sc:.3f},{int(self.d.holding)},{mo:.1f},{bc:.2f},{'' if cap is None else f'{cap:.0f}'},{pt:.2f}\n")
         except OSError:
             pass
         if act == "mute":

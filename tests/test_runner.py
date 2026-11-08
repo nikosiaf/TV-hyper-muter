@@ -328,3 +328,26 @@ class OptionsTest(unittest.TestCase):
         self.assertEqual(d.unmute_hold_by_channel, {"test": 60})
         r = main.Runner(options(channels=[ch]), FakeHA(), FakeHyperion(), tempfile.mkdtemp(), "/nonexistent/s.json")
         self.assertEqual(r.captioned, {"test": (40, 160)})
+
+
+class SportsRunnerTest(unittest.TestCase):
+    setUp, tearDown, make, run_until = RunnerTest.setUp, RunnerTest.tearDown, RunnerTest.make, RunnerTest.run_until
+
+    def test_grass_green_picture_is_sport(self):
+        from PIL import Image as I
+        import sports
+        grass = I.new("RGB", (320, 180), (70, 150, 50))
+        teal = I.new("RGB", (320, 180), (30, 150, 140))
+        self.assertGreater(sports.pitch(grass), 0.9)
+        self.assertEqual(sports.pitch(teal), 0.0)
+
+    def test_options_reach_the_decider(self):
+        r = self.make(sports_pitch=0.4, sports_memory_s=60)
+        self.assertEqual((r.d.sports, r.d.sports_memory_s), (0.4, 60))
+        self.assertEqual(self.make().d.sports, 0.25)  # saved options without the keys
+
+    def test_scores_have_a_pitch_column(self):
+        self.run_until(20)
+        rows = [l.split(",") for root, _, fs in os.walk(self.dir) if "scores.csv" in fs
+                for l in open(os.path.join(root, "scores.csv"))]
+        self.assertTrue(rows and all(len(x) == 8 for x in rows))
