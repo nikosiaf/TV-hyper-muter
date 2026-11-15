@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.14.0
+
+- Ad check in **shadow mode**: a small picture classifier estimates whether the last 25 s were
+  ads (`ad_p`, 0-1). It is only reported, never acted on: every `mute` / `unmute` event, the
+  status sensor (`ad_p` attribute) and scores.csv (9th column) carry the number, so its verdicts
+  can be compared with the badge rule on real evenings before it is allowed to decide anything.
+- Why: on a recorded week (2026-11-09..15, 42k frames, every badge-missing stretch labelled) two
+  out of three stretches without a badge were programme (news, shows, sport, old series), and
+  20 mutes ran into the programme until the max mute time. In a replay, requiring `ad_p` >= 0.7
+  to mute and releasing at <= 0.4 cut false mutes from 14 to 6 and wrongly muted programme time
+  from 208 to 32 minutes, for 72.5 % -> 66.9 % of ad time muted.
+- How: frozen MobileNetV3-Large features (ImageNet weights, run in plain numpy: no new
+  dependencies, same Alpine image) from one frame every ~5 s, and a small head trained on the
+  week, tested leave-one-day-out (AUC 0.98 on badge-less frames).
+- New option `ad_check`: `shadow` (default) or `off`. A failing check turns itself off
+  (`ad_check_error` event); the muter carries on as before. `ad_check_ready` logs the time one
+  frame takes.
+
 ## 0.13.0
 
 - Sports veto: live football has no age-rating badge, so the zap-in rule muted a Skai match on

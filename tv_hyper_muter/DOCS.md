@@ -64,6 +64,7 @@
 | `news_unmute` / `news_hold_s` | `0.4` / `30` | While muted: unmute when the band stays this fixed for this long |
 | `zap_in` | `true` | Allow the zap-in rule after a channel change |
 | `sports_pitch` / `sports_memory_s` | `0.25` / `180` | Sports veto: grass-green share of the picture (median over 25 s) that means a match, and how long after it no mute happens. `0` turns it off |
+| `ad_check` | `shadow` | Picture classifier that estimates whether the last 25 s were ads (`ad_p`). `shadow`: only reported (events, status sensor attribute `ad_p`, scores.csv); it never mutes or unmutes. `off`: not loaded |
 | `save_frames` | `true` | Save the frame at every mute/unmute |
 | `keep_days` | `14` | Days of logs to keep |
 | `channels` | 10 Greek channels | `name`, `match` (regex on the channel title), badge centre `y`, `x` and radius `r` on Hyperion's 320×180 image |
@@ -145,7 +146,7 @@ card:
 ## Logs
 
 `/share/tv_hyper_muter/<date>/`: `events.jsonl` (every decision), `scores.csv` (time, channel,
-badge score, muted, motion, band per frame) and the saved frames. The add-on log shows the
+badge score, muted, motion, band, caption, pitch, ad_p per frame) and the saved frames. The add-on log shows the
 same events.
 
 ## Adding a channel

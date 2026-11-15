@@ -31,7 +31,7 @@ def options(**kw):
          "badge_off": 0.45, "absent_below": 0.3, "absent_fraction": 0.9, "search_shift": 2,
          "arm_sightings": 3, "static_motion": 2.0, "static_fraction": 0.5, "news_band": 0.3,
          "news_band_now": 0.5, "news_unmute": 0.4, "news_hold_s": 30, "zap_in": True,
-         "save_frames": False, "keep_days": 14, "channels": [CH]}
+         "save_frames": False, "keep_days": 14, "ad_check": "off", "channels": [CH]}
     o.update(kw)
     return o
 
@@ -350,4 +350,45 @@ class SportsRunnerTest(unittest.TestCase):
         self.run_until(20)
         rows = [l.split(",") for root, _, fs in os.walk(self.dir) if "scores.csv" in fs
                 for l in open(os.path.join(root, "scores.csv"))]
-        self.assertTrue(rows and all(len(x) == 8 for x in rows))
+        self.assertTrue(rows and all(len(x) == 9 for x in rows))  # 9th: ad check, empty when off
+
+
+class AdCheckTest(unittest.TestCase):
+    """Shadow ad check: it only reports; the badge rule decides exactly as before."""
+    setUp, tearDown, make, run_until = RunnerTest.setUp, RunnerTest.tearDown, RunnerTest.make, RunnerTest.run_until
+    events, ev = RunnerTest.events, RunnerTest.ev
+
+    def test_shadow_reports_and_never_changes_the_decision(self):
+        r = self.make(ad_check="shadow")
+        self.assertIsNotNone(r.clf)
+        self.run_until(20, r)
+        self.hyp.mode = "ad"
+        self.run_until(60, r)
+        self.assertEqual(self.ha.mute_calls, [True])              # muted by the badge rule alone
+        self.assertEqual(len(self.ev("ad_check_ready")), 1)
+        p = self.ev("mute")[0]["ad_p"]
+        self.assertTrue(0.0 <= p <= 1.0)
+        self.assertTrue(0.0 <= self.ha.status[-1]["attributes"]["ad_p"] <= 1.0)   # sensor refreshes on changes / every 30 s
+        rows = [l.strip().split(",") for root, _, fs in os.walk(self.dir) if "scores.csv" in fs
+                for l in open(os.path.join(root, "scores.csv"))]
+        self.assertTrue(rows[-1][8] != "" and rows[0][8] != "")
+        self.assertLess(len(r.clf.frames), 9)                       # one frame every ~5 s, 30 s kept
+
+    def test_off_loads_nothing(self):
+        self.assertIsNone(self.make(ad_check="off").clf)
+        self.assertIsNotNone(self.make_default().clf)
+
+    def make_default(self):                                         # saved options without the key
+        o = options(); del o["ad_check"]
+        return main.Runner(o, self.ha, self.hyp, self.dir, self.state, mono=self.clock.mono, wall=self.clock.wall)
+
+    def test_a_failing_check_turns_itself_off(self):
+        r = self.make(ad_check="shadow")
+        r.clf.net.features = lambda im: 1 / 0
+        self.run_until(20, r)
+        self.hyp.mode = "ad"
+        self.run_until(60, r)
+        self.assertIsNone(r.clf)
+        self.assertEqual(len(self.ev("ad_check_error")), 1)
+        self.assertEqual(self.ha.mute_calls, [True])
+        self.assertIsNone(self.ev("mute")[0]["ad_p"])

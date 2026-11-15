@@ -21,6 +21,7 @@ from io import BytesIO
 import numpy as np
 from PIL import Image
 
+import adclf
 import badge
 import sports
 from decider import Decider
@@ -112,7 +113,31 @@ class Runner:
         self.owned = False
         self.release_pending = False
         self.retry_at, self.backoff = 0.0, RETRY_MIN_S
+        # ad check on the picture (shadow mode: logged next to every decision, never acted on)
+        self.clf, self.ad_p, self.clf_ms = None, None, None
+        if o.get("ad_check", "shadow") != "off":
+            try:
+                self.clf = adclf.AdClassifier()
+            except Exception as e:
+                print("ad check not loaded", repr(e), flush=True)
         self._load_state()
+
+    def ad_check(self, t, ch, colour):
+        """Shadow ad check: updates self.ad_p; any failure turns it off, the muter carries on."""
+        if self.clf is None:
+            return
+        try:
+            t0 = time.monotonic()
+            if self.clf.add(t, ch, colour):
+                ms = int((time.monotonic() - t0) * 1000)
+                if self.clf_ms is None:
+                    self.log("ad_check_ready", ms_per_frame=ms)
+                self.clf_ms = ms
+            p = self.clf.prob(t)
+            self.ad_p = None if p is None else round(p, 2)
+        except Exception as e:
+            self.clf, self.ad_p = None, None
+            self.log("ad_check_error", error=repr(e))
 
     # ---- files ----
     def day_dir(self):
@@ -207,6 +232,7 @@ class Runner:
                  "channel": self.d.channel, "badge_score": self.last_score,
                  "mutes_today": self.mutes, "dry_run": self.o["dry_run"],
                  "reason": self.reason, "mute_left_s": left, "sport": self.d.sport,
+                 "ad_p": self.ad_p,
                  "last_frame": None if self.last_frame_wall is None else
                  dt.datetime.fromtimestamp(self.last_frame_wall).isoformat(timespec="seconds"),
                  "problem": self.enable_problem}
@@ -242,19 +268,19 @@ class Runner:
         self.mutes += 1
         self.reason = why
         self.log("mute", channel=self.d.channel, score=None if sc is None else round(sc, 2),
-                 reason=why, frame=self.save_frame("mute", img))
+                 reason=why, ad_p=self.ad_p, frame=self.save_frame("mute", img))
 
     def do_unmute(self, why, held_since, sc=None, img=None):
         self.reason = why
         muted_for = None if held_since is None else int(self.mono() - held_since)
         if not self.owned:  # dry run, or the mute command never went through
-            self.log("unmute", channel=self.d.channel, reason=why, muted_for_s=muted_for,
+            self.log("unmute", channel=self.d.channel, reason=why, muted_for_s=muted_for, ad_p=self.ad_p,
                      **({"dry_run": True} if self.o["dry_run"] else {}))
             return
         self.release_pending = True
         self.retry_at, self.backoff = 0.0, RETRY_MIN_S
         if self.try_release():
-            self.log("unmute", channel=self.d.channel, reason=why, muted_for_s=muted_for,
+            self.log("unmute", channel=self.d.channel, reason=why, muted_for_s=muted_for, ad_p=self.ad_p,
                      score=None if sc is None else round(sc, 2), frame=self.save_frame("unmute", img))
         else:
             self.log("unmute_failed", channel=self.d.channel, reason=why, retry_in_s=self.backoff)
@@ -382,10 +408,11 @@ class Runner:
         tv_muted = False if self.d.holding else self.tv_muted  # our own mute must not block unmute logic
         cap = badge.caption(a, *self.captioned[ch]) if ch in self.captioned else None
         pt = sports.pitch(colour)
+        self.ad_check(t, ch, colour)
         act, why = self.d.frame(t, sc, tv_muted, mo, bc, cap, pt)
         try:
             with open(f"{self.day_dir()}/scores.csv", "a") as f:
-                f.write(f"{int(wall)},{ch},{sc:.3f},{int(self.d.holding)},{mo:.1f},{bc:.2f},{'' if cap is None else f'{cap:.0f}'},{pt:.2f}\n")
+                f.write(f"{int(wall)},{ch},{sc:.3f},{int(self.d.holding)},{mo:.1f},{bc:.2f},{'' if cap is None else f'{cap:.0f}'},{pt:.2f},{'' if self.ad_p is None else f'{self.ad_p:.2f}'}\n")
         except OSError:
             pass
         if act == "mute":
