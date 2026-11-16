@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.15.0
+
+- More than one TV: new option `more_tvs` (list of `name`, `tv_entity`, `hyperion_host`,
+  optional `hyperion_port` and `enable_entity`). Every TV is watched in its own thread with its
+  own picture, channel, mute ownership and timers, so two TVs can be on at the same time and
+  one that is off or unreachable does not delay the other. Rules and channels are shared.
+- A further TV has its own status sensor `sensor.tv_hyper_muter_<name>`, its own folder
+  `/share/tv_hyper_muter/<name>/` and `"tv": "<name>"` in its log lines. The main TV keeps
+  `sensor.tv_hyper_muter` and its folder: nothing changes for an existing setup.
+- `hyperion_host` has no default address any more: set it to your TV. Saved options are kept
+  on update.
+
 ## 0.14.0
 
 - Ad check in **shadow mode**: a small picture classifier estimates whether the last 25 s were

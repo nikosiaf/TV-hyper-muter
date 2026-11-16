@@ -47,8 +47,9 @@
 |---|---|---|
 | `tv_entity` | `media_player.tv` | LG webOS media player |
 | `live_source` | `Live TV` | Source name that means broadcast TV |
-| `hyperion_host` / `hyperion_port` | `192.168.10.30` / `8090` | Hyperion.NG websocket on the TV |
+| `hyperion_host` / `hyperion_port` | empty / `8090` | Hyperion.NG websocket on the TV: the TV's IP address or host name. Must be set |
 | `enable_entity` | empty | Optional `input_boolean` (or any on/off entity); when off, the add-on does nothing. Changes are logged as `enabled` / `disabled` |
+| `more_tvs` | empty | More TVs to watch at the same time, see [More than one TV](#more-than-one-tv) |
 | `dry_run` | `false` | Log decisions without muting |
 | `frame_interval_s` | `2` | Seconds between frames |
 | `state_poll_s` | `5` | Seconds between TV state checks |
@@ -75,6 +76,31 @@ Optional per-channel fields: `max_mute_minutes` (own safety limit), `alt` (more 
 `unmute_hold_s` (the badge must stay this many seconds before unmuting: channels whose own
 promos carry the badge during a break) and `caption` (top-left badges only: unmute at once,
 without the hold, when the programme's caption is next to the badge, as on Skai).
+
+## More than one TV
+
+The options above describe the main TV. Each entry of `more_tvs` adds another one:
+
+```yaml
+more_tvs:
+  - name: basement
+    tv_entity: media_player.basement_tv
+    hyperion_host: <IP address of that TV>
+```
+
+| Field | Meaning |
+|---|---|
+| `name` | Short name (letters, digits, `_`); used in the sensor and folder names |
+| `tv_entity` | That TV's LG webOS media player |
+| `hyperion_host` | Hyperion.NG on that TV |
+| `hyperion_port` | Optional, `8090` when left out |
+| `enable_entity` | Optional own switch; when left out the TV follows the main `enable_entity` |
+
+Every TV is watched on its own: its own picture, channel, mute and timers, so two TVs can be
+on at once, on the same or different channels, and a TV that is off or unreachable does not
+slow the other down. The rules and the channel list are shared. A further TV reports to
+`sensor.tv_hyper_muter_<name>`, logs to `/share/tv_hyper_muter/<name>/<date>/`, and its lines
+in the add-on log carry `"tv": "<name>"`. Each TV needs its own Hyperion.NG + PicCap.
 
 ## Status entity
 

@@ -3,6 +3,7 @@
 # TV hyper muter – Home Assistant add-on
 
 Mutes an LG webOS TV during ad breaks on Live TV, and unmutes when the programme returns.
+It can watch several TVs at the same time, each on its own.
 
 Greek channels show a small round age-rating badge (K, 8, 12, 16, 18) during programmes
 and drop it during ads, while the channel logo stays. The add-on reads the TV picture from
@@ -25,7 +26,8 @@ Or: Home Assistant → Settings → Add-ons → Add-on store → ⋮ → Reposit
 
 Before starting it, set `hyperion_host` to your TV's address and `tv_entity` to your TV's
 media player. The channel list is calibrated for Greek free-to-air channels; see
-[DOCS](tv_hyper_muter/DOCS.md#adding-a-channel) to add others. Try new channels with
+[DOCS](tv_hyper_muter/DOCS.md#adding-a-channel) to add others, and
+[More than one TV](tv_hyper_muter/DOCS.md#more-than-one-tv) for a second TV. Try new channels with
 `dry_run` on first.
 
 ## Dashboard card

@@ -53,13 +53,14 @@ class FakeHA:
         self.fail_mute = 0      # fail the next N volume_mute calls
         self.down = False       # every call fails
         self.mute_calls = []
+        self.mute_entities = []
         self.status = []
         self.switch = None      # state of the enable entity, None = 404
 
     def __call__(self, method, path, body=None):
         if self.down:
             raise urllib.error.URLError("HA down")
-        if path == "/states/media_player.tv":
+        if path in ("/states/media_player.tv", "/states/media_player.tv2"):
             return {"state": self.tv["state"], "attributes": {
                 "source": self.tv["source"], "media_title": self.tv["title"],
                 "is_volume_muted": self.tv["muted"]}}
@@ -72,6 +73,7 @@ class FakeHA:
                 self.fail_mute -= 1
                 raise urllib.error.URLError("timeout")
             self.mute_calls.append(body["is_volume_muted"])
+            self.mute_entities.append(body["entity_id"])
             self.tv["muted"] = body["is_volume_muted"]
             return []
         if path.startswith("/states/sensor."):
@@ -104,6 +106,47 @@ class FakeHyperion:
 
     def close(self):
         pass
+
+
+class MoreTvsTest(unittest.TestCase):
+    def test_main_tv_only(self):
+        o = options()
+        self.assertEqual(main.tv_list(o), [(None, o)])
+
+    def test_more_tvs(self):
+        o = options(enable_entity="input_boolean.sw", more_tvs=[
+            {"name": "Basement TV", "tv_entity": "media_player.tv2", "hyperion_host": "h2"},
+            {"name": "basement tv", "tv_entity": "media_player.tv3", "hyperion_host": "h3",
+             "hyperion_port": 9, "enable_entity": "input_boolean.other"}])
+        (n1, o1), (n2, o2), (n3, o3) = main.tv_list(o)
+        self.assertEqual((n1, n2, n3), (None, "basement_tv", "basement_tv_3"))
+        self.assertEqual((o2["tv_entity"], o2["hyperion_host"], o2["hyperion_port"], o2["enable_entity"]),
+                         ("media_player.tv2", "h2", 8090, "input_boolean.sw"))
+        self.assertEqual((o3["hyperion_port"], o3["enable_entity"]), (9, "input_boolean.other"))
+        self.assertEqual(o2["channels"], o["channels"])
+        self.assertEqual(o["tv_entity"], "media_player.tv")  # the main options are not touched
+
+    def test_no_main_tv(self):
+        o = options(hyperion_host="", more_tvs=[{"name": "b", "tv_entity": "media_player.tv2", "hyperion_host": "h"}])
+        self.assertEqual([n for n, _ in main.tv_list(o)], ["b"])
+        self.assertEqual(main.tv_list(options(hyperion_host="")), [])
+
+    def test_second_tv_mutes_its_own_entity_and_sensor(self):
+        d = tempfile.mkdtemp()
+        clock, ha, hyp = Clock(), FakeHA(), FakeHyperion()
+        _, o2 = main.tv_list(options(more_tvs=[
+            {"name": "tv2", "tv_entity": "media_player.tv2", "hyperion_host": "h"}]))[1]
+        r = main.Runner(o2, ha, hyp, d, os.path.join(d, "s.json"), mono=clock.mono, wall=clock.wall, name="tv2")
+        while clock.t < 200:
+            if clock.t >= 30:
+                hyp.mode = "ad"
+            clock.t += r.step()
+        self.assertEqual(ha.mute_calls, [True])
+        self.assertEqual(ha.mute_entities, ["media_player.tv2"])
+        r.shutdown()
+        self.assertEqual(ha.mute_calls, [True, False])
+        self.assertIn('"tv": "tv2"', open(os.path.join(d, "2027-01-15", "events.jsonl")).read())
+        shutil.rmtree(d)
 
 
 class RunnerTest(unittest.TestCase):

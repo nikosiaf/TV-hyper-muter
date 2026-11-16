@@ -13,6 +13,7 @@ import re
 import shutil
 import signal
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -86,9 +87,30 @@ def to_gray(img):
     return im.convert("L"), (w, h), im
 
 
+def tv_list(o):
+    """The TVs to watch, as (name, options) pairs: the main TV (name None) from the top-level
+    options, then each entry of `more_tvs` with its own entity, Hyperion address and, if given,
+    its own switch. Everything else (rules, channels) is shared."""
+    tvs = []
+    if (o.get("hyperion_host") or "").strip() and (o.get("tv_entity") or "").strip():
+        tvs.append((None, o))
+    for i, tv in enumerate(o.get("more_tvs") or [], 2):
+        name = re.sub(r"[^a-z0-9]+", "_", str(tv.get("name") or "").lower()).strip("_") or f"tv{i}"
+        if name in [n for n, _ in tvs]:
+            name = f"{name}_{i}"
+        tvs.append((name, dict(o, tv_entity=tv["tv_entity"], hyperion_host=tv["hyperion_host"],
+                               hyperion_port=tv.get("hyperion_port") or 8090,
+                               enable_entity=tv.get("enable_entity") or o.get("enable_entity") or "")))
+    return tvs
+
+
 class Runner:
-    def __init__(self, o, ha, hyp, out, state_path, mono=time.monotonic, wall=time.time):
+    def __init__(self, o, ha, hyp, out, state_path, mono=time.monotonic, wall=time.time, name=None):
         self.o, self.ha, self.hyp, self.out, self.state_path = o, ha, hyp, out, state_path
+        # the main TV keeps the plain sensor and folder; each further TV gets its own by name
+        self.name = name
+        self.status_entity = f"{STATUS_ENTITY}_{name}" if name else STATUS_ENTITY
+        self.label = f"TV hyper muter {name}" if name else "TV hyper muter"
         self.mono, self.wall = mono, wall
         self.channels = [(c["name"], re.compile(c["match"], re.I)) for c in o["channels"]]
         badge.CENTRES.update({c["name"]: shapes(c) for c in o["channels"]})
@@ -147,7 +169,7 @@ class Runner:
 
     def log(self, event, **kw):
         rec = {"t": dt.datetime.fromtimestamp(self.wall()).strftime("%Y-%m-%d %H:%M:%S"),
-               "event": event, **kw}
+               **({"tv": self.name} if self.name else {}), "event": event, **kw}
         line = json.dumps(rec, ensure_ascii=False)
         print(line, flush=True)
         try:
@@ -228,7 +250,7 @@ class Runner:
         left = None
         if self.d.holding:
             left = max(0, int(self.d.mute_cap() - (t - self.d.muted_at)))
-        attrs = {"friendly_name": "TV hyper muter", "icon": "mdi:television-off",
+        attrs = {"friendly_name": self.label, "icon": "mdi:television-off",
                  "channel": self.d.channel, "badge_score": self.last_score,
                  "mutes_today": self.mutes, "dry_run": self.o["dry_run"],
                  "reason": self.reason, "mute_left_s": left, "sport": self.d.sport,
@@ -237,7 +259,7 @@ class Runner:
                  dt.datetime.fromtimestamp(self.last_frame_wall).isoformat(timespec="seconds"),
                  "problem": self.enable_problem}
         try:
-            self.ha("POST", f"/states/{STATUS_ENTITY}", {"state": state, "attributes": attrs})
+            self.ha("POST", f"/states/{self.status_entity}", {"state": state, "attributes": attrs})
             self.status_key, self.last_pub = key, t
         except Exception as e:
             print("status publish failed", repr(e), flush=True)
@@ -470,8 +492,8 @@ class Runner:
         if os.environ.get("TVHYPERMUTER_NO_STATUS"):
             return
         try:
-            self.ha("POST", f"/states/{STATUS_ENTITY}", {"state": "stopped", "attributes": {
-                "friendly_name": "TV hyper muter", "icon": "mdi:television-off",
+            self.ha("POST", f"/states/{self.status_entity}", {"state": "stopped", "attributes": {
+                "friendly_name": self.label, "icon": "mdi:television-off",
                 "mutes_today": self.mutes, "dry_run": self.o["dry_run"]}})
         except Exception as e:
             print("status publish failed", repr(e), flush=True)
@@ -488,23 +510,50 @@ def main():
     # Inside the add-on the Supervisor proxies Core; HA_URL/HA_TOKEN allow running outside it for tests.
     ha = HAClient(os.environ.get("HA_URL", "http://supervisor/core/api"),
                   os.environ.get("HA_TOKEN") or os.environ.get("SUPERVISOR_TOKEN", ""), ctx)
-    os.makedirs(out, exist_ok=True)
-    r = Runner(o, ha, Hyperion(o["hyperion_host"], o["hyperion_port"]), out, state_path)
-    r.prune()
-    r.log("start", dry_run=o["dry_run"], channels=[c for c, _ in r.channels])
+    tvs = tv_list(o)
+    if not tvs:
+        print("no TV configured: set tv_entity and hyperion_host (or more_tvs)", flush=True)
+        return 1
+    stop = threading.Event()
+    threads = []
+    for name, opts in tvs:
+        tv_out = f"{out}/{name}" if name else out
+        os.makedirs(tv_out, exist_ok=True)
+        r = Runner(opts, ha, Hyperion(opts["hyperion_host"], opts["hyperion_port"]), tv_out,
+                   state_path.replace(".json", f"_{name}.json") if name else state_path, name=name)
+        r.prune()
+        r.log("start", dry_run=opts["dry_run"], tv_entity=opts["tv_entity"], channels=[c for c, _ in r.channels])
+        threads.append(threading.Thread(target=run, args=(r, stop), daemon=True))
+    # one thread per TV: a TV that is slow or unreachable never delays the other
+    for th in threads:
+        th.start()
     try:
-        while True:
+        while any(th.is_alive() for th in threads):
+            time.sleep(1)
+    finally:
+        stop.set()  # each thread releases its own mute on the way out
+        for th in threads:
+            th.join(25)
+
+
+def run(r, stop):
+    """One TV's loop, until `stop` is set; then release its mute."""
+    try:
+        while not stop.is_set():
             try:
                 wait = r.step()
             except Exception as e:  # never let one bad pass kill the loop while we may own a mute
                 r.log("error", error=repr(e))
                 wait = 2
-            time.sleep(wait)
+            stop.wait(wait)
     finally:
         r.shutdown()
 
 
 def _stop(signum, frame):
+    # a second signal must not cut the release short
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     raise SystemExit(0)  # run main()'s finally: release our mute before the container stops
 
 

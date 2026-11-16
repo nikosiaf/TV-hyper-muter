@@ -1,8 +1,8 @@
 name: TV hyper muter
 slug: tv_hyper_muter
-version: "0.14.0"
+version: "0.15.0"
 description: >
-  Mutes an LG webOS TV during ad breaks on Live TV. Reads the picture from Hyperion
+  Mutes one or more LG webOS TVs during ad breaks on Live TV. Reads the picture from Hyperion
   (PicCap on a rooted TV) and mutes through Home Assistant while the channel's
   age-rating badge is missing.
 url: https://github.com/nikosiaf/TV-hyper-muter
@@ -19,9 +19,10 @@ map:
 options:
   tv_entity: media_player.tv
   live_source: Live TV
-  hyperion_host: 192.168.10.30
+  hyperion_host: ""
   hyperion_port: 8090
   enable_entity: ""
+  more_tvs: []
   dry_run: false
   frame_interval_s: 2
   state_poll_s: 5
@@ -63,6 +64,12 @@ schema:
   hyperion_host: str
   hyperion_port: port
   enable_entity: str
+  more_tvs:
+    - name: str
+      tv_entity: str
+      hyperion_host: str
+      hyperion_port: port?
+      enable_entity: str?
   dry_run: bool
   frame_interval_s: int(1,10)
   state_poll_s: int(2,30)
