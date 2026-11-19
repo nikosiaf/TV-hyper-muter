@@ -8,7 +8,7 @@ channel logo, badge) and the bottom band (tickers, captions) are left out.
 import numpy as np
 
 SMALL = (80, 45)
-ROWS = (6, 40)
+ROWS = (6, 30)
 HUE = (75, 135)  # degrees
 SAT, VAL = 0.45, 0.30
 

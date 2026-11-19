@@ -261,10 +261,6 @@ class ZapWindowTest(unittest.TestCase):
                 acts.append(a)
         self.assertEqual(acts, ["mute"])
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class UnmuteHoldTest(unittest.TestCase):
     """Skai/Open/Star promos for their own shows carry the badge for 15-45 s inside a break."""
 
@@ -280,6 +276,12 @@ class UnmuteHoldTest(unittest.TestCase):
     def test_short_badge_run_does_not_unmute(self):
         t0 = self.muted()
         acts = run(self.d, [BADGE] * 15 + [NONE] * 10, start=t0)  # 30 s promo, then ads again
+        self.assertEqual(acts, [])
+        self.assertTrue(self.d.holding)
+
+    def test_badge_must_stay_back_through_hold(self):
+        t0 = self.muted()
+        acts = run(self.d, [BADGE] * 2 + [0.40] * 40, start=t0)
         self.assertEqual(acts, [])
         self.assertTrue(self.d.holding)
 
@@ -367,3 +369,7 @@ class SportsTest(unittest.TestCase):
         d = Decider(miss_s=25, max_mute_s=720, sports=0)
         d.state(0, "skai", True, False)
         self.assertEqual([a for _, a, _ in self.feed(d, [(NONE, 0.6)] * 60)], ["mute"])
+
+
+if __name__ == "__main__":
+    unittest.main()

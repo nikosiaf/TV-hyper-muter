@@ -126,10 +126,26 @@ class MoreTvsTest(unittest.TestCase):
         self.assertEqual(o2["channels"], o["channels"])
         self.assertEqual(o["tv_entity"], "media_player.tv")  # the main options are not touched
 
+    def test_more_tv_generated_names_are_unique(self):
+        o = options(hyperion_host="", more_tvs=[
+            {"name": "x", "tv_entity": "media_player.tv1", "hyperion_host": "h1"},
+            {"name": "x_4", "tv_entity": "media_player.tv2", "hyperion_host": "h2"},
+            {"name": "x", "tv_entity": "media_player.tv3", "hyperion_host": "h3"},
+        ])
+        names = [n for n, _ in main.tv_list(o)]
+        self.assertEqual(len(names), len(set(names)))
+
     def test_no_main_tv(self):
         o = options(hyperion_host="", more_tvs=[{"name": "b", "tv_entity": "media_player.tv2", "hyperion_host": "h"}])
         self.assertEqual([n for n, _ in main.tv_list(o)], ["b"])
         self.assertEqual(main.tv_list(options(hyperion_host="")), [])
+
+    def test_more_tv_empty_required_fields_are_ignored(self):
+        o = options(hyperion_host="", more_tvs=[
+            {"name": "bad1", "tv_entity": "", "hyperion_host": "h"},
+            {"name": "bad2", "tv_entity": "media_player.tv2", "hyperion_host": ""},
+        ])
+        self.assertEqual(main.tv_list(o), [])
 
     def test_second_tv_mutes_its_own_entity_and_sensor(self):
         d = tempfile.mkdtemp()
@@ -209,6 +225,13 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.ha.tv["muted"])
         self.assertFalse(self.r.owned or self.owned_on_disk())
         self.assertTrue(any(e.get("retried") for e in self.ev("unmute")))
+
+    def test_failed_unmute_logs_actual_next_retry_delay(self):
+        self.mute_by_ad()
+        self.ha.fail_mute = 1
+        self.hyp.mode = "badge"
+        self.run_until(76)
+        self.assertEqual(self.ev("unmute_failed")[0]["retry_in_s"], 2)
 
     def test_failed_mute_is_not_owned(self):
         self.run_until(30)
@@ -340,9 +363,13 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.r.owned or self.owned_on_disk())
         self.assertEqual(self.ha.mute_calls, [True])
 
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_unavailable_tv_state_does_not_abandon_owned_mute(self):
+        self.mute_by_ad()
+        self.ha.tv["state"] = "unavailable"
+        self.run_until(90)
+        self.assertEqual(self.ha.mute_calls, [True])
+        self.assertTrue(self.ha.tv["muted"])
+        self.assertTrue(self.r.owned and self.owned_on_disk())
 
 
 class CaptionTest(unittest.TestCase):
@@ -383,6 +410,13 @@ class SportsRunnerTest(unittest.TestCase):
         teal = I.new("RGB", (320, 180), (30, 150, 140))
         self.assertGreater(sports.pitch(grass), 0.9)
         self.assertEqual(sports.pitch(teal), 0.0)
+
+    def test_green_bottom_band_is_not_sport(self):
+        from PIL import Image as I, ImageDraw as D
+        import sports
+        im = I.new("RGB", (320, 180), (0, 0, 0))
+        D.Draw(im).rectangle((0, 120, 319, 179), fill=(70, 150, 50))
+        self.assertLess(sports.pitch(im), 0.25)
 
     def test_options_reach_the_decider(self):
         r = self.make(sports_pitch=0.4, sports_memory_s=60)
@@ -435,3 +469,7 @@ class AdCheckTest(unittest.TestCase):
         self.assertEqual(len(self.ev("ad_check_error")), 1)
         self.assertEqual(self.ha.mute_calls, [True])
         self.assertIsNone(self.ev("mute")[0]["ad_p"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.15.1
+
+- Fixes for the multi-TV release: duplicate `more_tvs` names cannot collide after sanitizing,
+  and entries with an empty `tv_entity` or `hyperion_host` are ignored instead of creating a
+  broken runner.
+- A temporary Home Assistant `unknown` / `unavailable` media-player state no longer makes the
+  add-on abandon an owned mute without unmuting it.
+- The sports veto ignores the bottom caption/ticker band as intended, so green lower-thirds do
+  not look like a football pitch.
+- `unmute_hold_s` now requires the badge to stay back through the whole hold; a brief two-frame
+  badge return followed by faint/no-badge scores no longer unmutes.
+- `unmute_failed` logs the actual next retry delay. Direct `python tests/test_*.py` runs now
+  execute all test classes.
+
 ## 0.15.0
 
 - More than one TV: new option `more_tvs` (list of `name`, `tv_entity`, `hyperion_host`,

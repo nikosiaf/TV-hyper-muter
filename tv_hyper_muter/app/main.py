@@ -95,8 +95,12 @@ def tv_list(o):
     if (o.get("hyperion_host") or "").strip() and (o.get("tv_entity") or "").strip():
         tvs.append((None, o))
     for i, tv in enumerate(o.get("more_tvs") or [], 2):
-        name = re.sub(r"[^a-z0-9]+", "_", str(tv.get("name") or "").lower()).strip("_") or f"tv{i}"
-        if name in [n for n, _ in tvs]:
+        if not (tv.get("tv_entity") or "").strip() or not (tv.get("hyperion_host") or "").strip():
+            continue
+        base = re.sub(r"[^a-z0-9]+", "_", str(tv.get("name") or "").lower()).strip("_") or f"tv{i}"
+        name = base
+        used = {n for n, _ in tvs}
+        while name in used:
             name = f"{name}_{i}"
         tvs.append((name, dict(o, tv_entity=tv["tv_entity"], hyperion_host=tv["hyperion_host"],
                                hyperion_port=tv.get("hyperion_port") or 8090,
@@ -219,7 +223,10 @@ class Runner:
     def read_tv(self):
         st = self.ha("GET", f"/states/{self.o['tv_entity']}")
         at = st.get("attributes", {})
-        tv_on = st.get("state") == "on"
+        state = st.get("state")
+        if state in ("unavailable", "unknown"):
+            raise RuntimeError(f"{self.o['tv_entity']} is {state}")
+        tv_on = state == "on"
         title = at.get("media_title")
         ch = self.channel_of(title) if tv_on and at.get("source") == self.o["live_source"] else None
         return tv_on, bool(at.get("is_volume_muted")), title, at.get("source"), ch
@@ -305,7 +312,7 @@ class Runner:
             self.log("unmute", channel=self.d.channel, reason=why, muted_for_s=muted_for, ad_p=self.ad_p,
                      score=None if sc is None else round(sc, 2), frame=self.save_frame("unmute", img))
         else:
-            self.log("unmute_failed", channel=self.d.channel, reason=why, retry_in_s=self.backoff)
+            self.log("unmute_failed", channel=self.d.channel, reason=why, retry_in_s=max(0, round(self.retry_at - self.mono(), 1)))
 
     def try_release(self):
         """One attempt at our pending unmute; True when done."""

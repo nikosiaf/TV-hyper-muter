@@ -189,6 +189,8 @@ class Decider:
                     self.back_since, self.back_ok = None, False
             else:
                 self.dips = 0
+            if score < self.off:
+                self.back_since, self.back_ok = None, False
             if score >= self.on and self.back_since is None:
                 self.back_since = t
             if self.back >= 2 and self.back_since is not None:
